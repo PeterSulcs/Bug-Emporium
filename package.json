@@ -1,0 +1,19 @@
+{
+  "name": "bug-emporium",
+  "version": "1.0.0",
+  "description": "A web app for issue triage in GitLab repositories",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd backend && npm run dev",
+    "client": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "start": "cd backend && npm start"
+  },
+  "keywords": ["gitlab", "issues", "triage", "bug-tracking"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
