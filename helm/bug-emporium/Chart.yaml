@@ -1,0 +1,17 @@
+apiVersion: v2
+name: bug-emporium
+description: A Helm chart for Bug Emporium - GitLab issue triage application
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - gitlab
+  - issues
+  - triage
+  - bug-tracking
+home: https://github.com/your-org/bug-emporium
+sources:
+  - https://github.com/your-org/bug-emporium
+maintainers:
+  - name: Your Name
+    email: your.email@example.com

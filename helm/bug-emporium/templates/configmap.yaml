@@ -1,0 +1,12 @@
+{{- if .Values.configMap.create }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "bug-emporium.fullname" . }}-config
+  labels:
+    {{- include "bug-emporium.labels" . | nindent 4 }}
+data:
+  GITLAB_ENDPOINT: {{ .Values.configMap.data.GITLAB_ENDPOINT | quote }}
+  EMPORIUM_LABEL: {{ .Values.configMap.data.EMPORIUM_LABEL | quote }}
+  PRIORITY_LABEL: {{ .Values.configMap.data.PRIORITY_LABEL | quote }}
+{{- end }}

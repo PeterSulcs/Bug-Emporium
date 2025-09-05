@@ -1,0 +1,146 @@
+# Default values for bug-emporium
+replicaCount: 2
+
+image:
+  repository: ghcr.io/your-org/bug-emporium
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  fsGroup: 1001
+  runAsNonRoot: true
+  runAsUser: 1001
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1001
+
+service:
+  type: ClusterIP
+  port: 3001
+  targetPort: 3001
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: bug-emporium.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# OpenShift Route configuration
+route:
+  enabled: true
+  host: bug-emporium.apps.your-domain.com
+  annotations:
+    haproxy.router.openshift.io/timeout: 60s
+    haproxy.router.openshift.io/rate-limit-connections: "true"
+    haproxy.router.openshift.io/rate-limit-connections.concurrent-tcp: "10"
+  tls:
+    enabled: true
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# GitLab configuration
+gitlab:
+  endpoint: "https://gitlab.com"
+  token: ""
+  groupId: ""
+  emporiumLabel: "emporium"
+  priorityLabel: "priority"
+
+# Environment variables
+env:
+  NODE_ENV: "production"
+  PORT: "3001"
+
+# ConfigMap for non-sensitive configuration
+configMap:
+  create: true
+  data:
+    GITLAB_ENDPOINT: "https://gitlab.com"
+    EMPORIUM_LABEL: "emporium"
+    PRIORITY_LABEL: "priority"
+
+# Secret for sensitive configuration
+secret:
+  create: true
+  data:
+    GITLAB_TOKEN: ""
+    GITLAB_GROUP_ID: ""
+
+# Health check configuration
+healthCheck:
+  enabled: true
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+  successThreshold: 1
+
+# Liveness probe configuration
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  timeoutSeconds: 5
+  failureThreshold: 3
+  successThreshold: 1
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Network policy
+networkPolicy:
+  enabled: false
+  ingress: []
+  egress: []
+
+# Service monitor for Prometheus
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  scrapeTimeout: 10s
+  labels: {}

@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: bug-emporium
+  labels:
+    name: bug-emporium
+    app: bug-emporium

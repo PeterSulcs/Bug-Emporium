@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bug-emporium-config
+  namespace: bug-emporium
+data:
+  GITLAB_ENDPOINT: "https://gitlab.com"
+  EMPORIUM_LABEL: "emporium"
+  PRIORITY_LABEL: "priority"
