@@ -1,4 +1,4 @@
-import React from 'react';
+// React import not needed with JSX Transform
 import IssueCard from './IssueCard';
 
 function IssueSection({ title, issues, className, priorityLabel }) {

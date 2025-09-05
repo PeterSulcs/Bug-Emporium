@@ -1,4 +1,4 @@
-import React from 'react';
+// React import not needed with JSX Transform
 
 function ErrorMessage({ error, onRetry }) {
   return (

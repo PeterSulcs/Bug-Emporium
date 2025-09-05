@@ -1,4 +1,4 @@
-import React from 'react';
+// React import not needed with JSX Transform
 
 function IssueCard({ issue, priorityLabel }) {
   const isPriority = priorityLabel && issue.labels.includes(priorityLabel);

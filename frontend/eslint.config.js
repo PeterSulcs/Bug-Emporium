@@ -39,7 +39,7 @@ export default [
         argsIgnorePattern: '^_',
         varsIgnorePattern: '^_'
       }],
-      'no-console': 'warn',
+      'no-console': 'off', // Allow console statements
     },
   },
 ]

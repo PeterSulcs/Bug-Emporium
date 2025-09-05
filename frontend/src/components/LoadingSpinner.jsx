@@ -1,4 +1,4 @@
-import React from 'react';
+// React import not needed with JSX Transform
 
 function LoadingSpinner() {
   return (
@@ -14,12 +14,6 @@ function LoadingSpinner() {
         marginBottom: '1rem'
       }}></div>
       <p>Loading issues from GitLab...</p>
-      <style jsx>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 }
