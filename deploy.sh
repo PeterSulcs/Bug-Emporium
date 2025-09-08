@@ -84,16 +84,26 @@ deploy_with_helm() {
         exit 1
     fi
     
+    # Prepare Helm values
+    local helm_values="--set image.tag=$IMAGE_TAG"
+    helm_values="$helm_values --set gitlab.token=$GITLAB_TOKEN"
+    helm_values="$helm_values --set gitlab.groupId=$GITLAB_GROUP_ID"
+    helm_values="$helm_values --set gitlab.endpoint=${GITLAB_ENDPOINT:-https://gitlab.com}"
+    helm_values="$helm_values --set gitlab.emporiumLabel=${EMPORIUM_LABEL:-emporium}"
+    helm_values="$helm_values --set gitlab.priorityLabel=${PRIORITY_LABEL:-priority}"
+    helm_values="$helm_values --set route.host=${ROUTE_HOST:-bug-emporium.apps.your-domain.com}"
+    
+    # Add CA certificate if provided
+    if [ -n "$GITLAB_CA_CERT_PATH" ] && [ -f "$GITLAB_CA_CERT_PATH" ]; then
+        local ca_cert_b64=$(base64 -i "$GITLAB_CA_CERT_PATH" | tr -d '\n')
+        helm_values="$helm_values --set secret.data.GITLAB_CA_CERT=$ca_cert_b64"
+        print_status "Using CA certificate: $GITLAB_CA_CERT_PATH"
+    fi
+    
     # Deploy with Helm
     helm upgrade --install "$RELEASE_NAME" "$CHART_PATH" \
         --namespace "$NAMESPACE" \
-        --set image.tag="$IMAGE_TAG" \
-        --set gitlab.token="$GITLAB_TOKEN" \
-        --set gitlab.groupId="$GITLAB_GROUP_ID" \
-        --set gitlab.endpoint="${GITLAB_ENDPOINT:-https://gitlab.com}" \
-        --set gitlab.emporiumLabel="${EMPORIUM_LABEL:-emporium}" \
-        --set gitlab.priorityLabel="${PRIORITY_LABEL:-priority}" \
-        --set route.host="${ROUTE_HOST:-bug-emporium.apps.your-domain.com}" \
+        $helm_values \
         --wait --timeout=5m
     
     print_success "Bug Emporium deployed successfully"
@@ -157,6 +167,7 @@ show_help() {
     echo "  GITLAB_TOKEN        GitLab access token (required)"
     echo "  GITLAB_GROUP_ID     GitLab group ID (required)"
     echo "  GITLAB_ENDPOINT     GitLab endpoint (default: https://gitlab.com)"
+    echo "  GITLAB_CA_CERT_PATH Path to CA certificate file for self-signed GitLab"
     echo "  EMPORIUM_LABEL      Emporium label (default: emporium)"
     echo "  PRIORITY_LABEL      Priority label (default: priority)"
     echo "  ROUTE_HOST          OpenShift route host"
@@ -166,6 +177,7 @@ show_help() {
     echo "Examples:"
     echo "  $0 deploy"
     echo "  GITLAB_TOKEN=xxx GITLAB_GROUP_ID=123 $0 deploy"
+    echo "  GITLAB_CA_CERT_PATH=/path/to/ca.pem $0 deploy"
     echo "  $0 status"
     echo "  $0 logs"
     echo "  $0 delete"

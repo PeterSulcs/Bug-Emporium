@@ -70,6 +70,10 @@ spec:
                 secretKeyRef:
                   name: {{ include "bug-emporium.fullname" . }}-secret
                   key: GITLAB_GROUP_ID
+            {{- if .Values.secret.data.GITLAB_CA_CERT }}
+            - name: GITLAB_CA_CERT_PATH
+              value: "/etc/ssl/certs/gitlab-ca.pem"
+            {{- end }}
             {{- end }}
           {{- if .Values.healthCheck.enabled }}
           readinessProbe:
@@ -98,9 +102,22 @@ spec:
           volumeMounts:
             - name: tmp
               mountPath: /tmp
+            {{- if .Values.secret.data.GITLAB_CA_CERT }}
+            - name: gitlab-ca-cert
+              mountPath: /etc/ssl/certs
+              readOnly: true
+            {{- end }}
       volumes:
         - name: tmp
           emptyDir: {}
+        {{- if .Values.secret.data.GITLAB_CA_CERT }}
+        - name: gitlab-ca-cert
+          secret:
+            secretName: {{ include "bug-emporium.fullname" . }}-secret
+            items:
+            - key: GITLAB_CA_CERT
+              path: gitlab-ca.pem
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 const path = require('path');
+const fs = require('fs');
+const https = require('https');
 require('dotenv').config();
 
 const app = express();
@@ -20,6 +22,21 @@ const GITLAB_TOKEN = process.env.GITLAB_TOKEN;
 const GITLAB_GROUP_ID = process.env.GITLAB_GROUP_ID;
 const EMPORIUM_LABEL = process.env.EMPORIUM_LABEL || 'emporium';
 const PRIORITY_LABEL = process.env.PRIORITY_LABEL || 'priority';
+const GITLAB_CA_CERT_PATH = process.env.GITLAB_CA_CERT_PATH;
+
+// Create HTTPS agent with custom CA certificate if provided
+let httpsAgent = null;
+if (GITLAB_CA_CERT_PATH && fs.existsSync(GITLAB_CA_CERT_PATH)) {
+  try {
+    const caCert = fs.readFileSync(GITLAB_CA_CERT_PATH);
+    httpsAgent = new https.Agent({
+      ca: caCert
+    });
+    console.log(`Using custom CA certificate: ${GITLAB_CA_CERT_PATH}`);
+  } catch (error) {
+    console.error(`Failed to load CA certificate from ${GITLAB_CA_CERT_PATH}:`, error.message);
+  }
+}
 
 // GitLab API helper
 const gitlabApi = axios.create({
@@ -27,7 +44,9 @@ const gitlabApi = axios.create({
   headers: {
     'Authorization': `Bearer ${GITLAB_TOKEN}`,
     'Content-Type': 'application/json'
-  }
+  },
+  httpsAgent: httpsAgent,
+  timeout: 30000 // 30 second timeout
 });
 
 // Helper function to categorize issues

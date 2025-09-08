@@ -71,6 +71,7 @@ A modern web application for issue triage in GitLab repositories. The Bug Empori
 | `GITLAB_ENDPOINT` | Your GitLab instance URL | `https://gitlab.com` |
 | `GITLAB_TOKEN` | GitLab read-only access token | Required |
 | `GITLAB_GROUP_ID` | GitLab group ID to monitor | Required |
+| `GITLAB_CA_CERT_PATH` | Path to CA certificate for self-signed GitLab | Optional |
 | `EMPORIUM_LABEL` | Label to filter issues | `emporium` |
 | `PRIORITY_LABEL` | Label for priority issues | `priority` |
 | `PORT` | Backend server port | `3001` |
@@ -89,6 +90,11 @@ A modern web application for issue triage in GitLab repositories. The Bug Empori
 3. **Label your issues:**
    - Add the `emporium` label to issues you want to appear in the Bug Emporium
    - Optionally add a `priority` label to issues that should appear at the top
+
+4. **For Self-Signed Certificates (Enterprise GitLab):**
+   - If your GitLab instance uses a self-signed or internal CA certificate, provide the certificate file path
+   - Set `GITLAB_CA_CERT_PATH=/path/to/your/ca-certificate.pem` in your environment
+   - The certificate will be used to verify SSL connections to your GitLab instance
 
 ## How It Works
 
@@ -158,10 +164,21 @@ bug-emporium/
 ```bash
 # Build and run with Docker
 docker build -t bug-emporium .
+
+# For public GitLab instances
 docker run -p 3001:3001 \
   -e GITLAB_ENDPOINT=https://your-gitlab.com \
   -e GITLAB_TOKEN=your-token \
   -e GITLAB_GROUP_ID=your-group-id \
+  bug-emporium
+
+# For self-signed certificate GitLab instances
+docker run -p 3001:3001 \
+  -e GITLAB_ENDPOINT=https://your-gitlab.com \
+  -e GITLAB_TOKEN=your-token \
+  -e GITLAB_GROUP_ID=your-group-id \
+  -e GITLAB_CA_CERT_PATH=/etc/ssl/certs/gitlab-ca.pem \
+  -v /path/to/your/ca-certificate.pem:/etc/ssl/certs/gitlab-ca.pem:ro \
   bug-emporium
 ```
 

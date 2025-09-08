@@ -68,6 +68,12 @@ PRIORITY_LABEL=priority
 PORT=3001
 NODE_ENV=production
 EOF
+
+    # Add CA certificate path if provided
+    if [ -n "$GITLAB_CA_CERT_PATH" ] && [ -f "$GITLAB_CA_CERT_PATH" ]; then
+        echo "GITLAB_CA_CERT_PATH=$GITLAB_CA_CERT_PATH" >> .env.test
+        print_status "Using CA certificate: $GITLAB_CA_CERT_PATH"
+    fi
     
     # Run the container
     print_status "Starting container..."

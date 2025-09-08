@@ -88,6 +88,8 @@ gitlab:
   groupId: ""
   emporiumLabel: "emporium"
   priorityLabel: "priority"
+  # Optional: CA certificate for self-signed or internal GitLab instances
+  caCertPath: ""
 
 # Environment variables
 env:
@@ -108,6 +110,8 @@ secret:
   data:
     GITLAB_TOKEN: ""
     GITLAB_GROUP_ID: ""
+    # Optional: CA certificate content (base64 encoded)
+    GITLAB_CA_CERT: ""
 
 # Health check configuration
 healthCheck:
