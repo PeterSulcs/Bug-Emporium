@@ -41,7 +41,8 @@ RUN npm ci --only=production && npm cache clean --force
 # Copy backend source code
 COPY backend/ ./
 
-# Copy built frontend from frontend-builder stage
+# Create public directory and copy built frontend from frontend-builder stage
+RUN mkdir -p public
 COPY --from=frontend-builder /app/frontend/dist ./public
 
 # Create .env file with default values (will be overridden by environment variables)

@@ -57,10 +57,10 @@ A modern web application for issue triage in GitLab repositories. The Bug Empori
    npm run dev
    ```
    
-   This will start both the backend (port 3001) and frontend (port 3000) servers.
+   This will start both the backend (port 3001) and frontend (port 3000) servers for development.
 
 4. **Open your browser:**
-   Navigate to `http://localhost:3000`
+   Navigate to `http://localhost:3000` (development) or `http://localhost:3001` (production)
 
 ## Configuration
 
@@ -154,23 +154,42 @@ bug-emporium/
 
 ### Production Setup
 
+**Option 1: Docker (Recommended)**
+```bash
+# Build and run with Docker
+docker build -t bug-emporium .
+docker run -p 3001:3001 \
+  -e GITLAB_ENDPOINT=https://your-gitlab.com \
+  -e GITLAB_TOKEN=your-token \
+  -e GITLAB_GROUP_ID=your-group-id \
+  bug-emporium
+```
+
+**Option 2: Manual Setup**
 1. **Build the frontend:**
    ```bash
    cd frontend
    npm run build
    ```
 
-2. **Configure production environment:**
+2. **Copy frontend build to backend:**
+   ```bash
+   cp -r frontend/dist backend/public
+   ```
+
+3. **Configure production environment:**
    ```bash
    cd backend
    cp config.example.env .env
    # Edit .env with production values
    ```
 
-3. **Start the production server:**
+4. **Start the production server:**
    ```bash
    npm start
    ```
+
+The production server will serve both the API and the React frontend on port 3001.
 
 ### Docker Deployment (Optional)
 

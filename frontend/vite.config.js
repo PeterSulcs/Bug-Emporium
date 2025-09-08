@@ -13,6 +13,11 @@ export default defineConfig({
       }
     }
   },
+  build: {
+    // Ensure the build works for both development and production
+    outDir: 'dist',
+    assetsDir: 'assets'
+  },
   define: {
     global: 'globalThis',
   },
