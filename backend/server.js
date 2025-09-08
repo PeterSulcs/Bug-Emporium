@@ -29,13 +29,31 @@ let httpsAgent = null;
 if (GITLAB_CA_CERT_PATH && fs.existsSync(GITLAB_CA_CERT_PATH)) {
   try {
     const caCert = fs.readFileSync(GITLAB_CA_CERT_PATH);
+    
+    // Try to parse the certificate to validate it
+    const certString = caCert.toString();
+    if (!certString.includes('-----BEGIN CERTIFICATE-----')) {
+      console.warn(`⚠️  Certificate file may not be in PEM format: ${GITLAB_CA_CERT_PATH}`);
+    }
+    
     httpsAgent = new https.Agent({
-      ca: caCert
+      ca: caCert,
+      rejectUnauthorized: true,
+      // Additional options for better certificate handling
+      keepAlive: true,
+      maxSockets: 1
     });
-    console.log(`Using custom CA certificate: ${GITLAB_CA_CERT_PATH}`);
+    console.log(`✅ Using custom CA certificate: ${GITLAB_CA_CERT_PATH}`);
+    console.log(`📄 Certificate size: ${caCert.length} bytes`);
   } catch (error) {
-    console.error(`Failed to load CA certificate from ${GITLAB_CA_CERT_PATH}:`, error.message);
+    console.error(`❌ Failed to load CA certificate from ${GITLAB_CA_CERT_PATH}:`, error.message);
+    console.log('⚠️  Falling back to system certificates');
   }
+} else if (GITLAB_CA_CERT_PATH) {
+  console.log(`⚠️  Certificate path provided but file not found: ${GITLAB_CA_CERT_PATH}`);
+  console.log('⚠️  Using system certificates');
+} else {
+  console.log('ℹ️  No custom CA certificate configured, using system certificates');
 }
 
 // GitLab API helper
@@ -97,8 +115,64 @@ app.get('/api/config', (req, res) => {
   res.json({
     emporiumLabel: EMPORIUM_LABEL,
     priorityLabel: PRIORITY_LABEL,
-    gitlabEndpoint: GITLAB_ENDPOINT
+    gitlabEndpoint: GITLAB_ENDPOINT,
+    hasCustomCert: !!httpsAgent,
+    certPath: GITLAB_CA_CERT_PATH || null
   });
+});
+
+// Test GitLab connectivity
+app.get('/api/test-gitlab', async (req, res) => {
+  try {
+    if (!GITLAB_TOKEN || !GITLAB_GROUP_ID) {
+      return res.status(500).json({ 
+        error: 'GitLab configuration missing. Please check your environment variables.' 
+      });
+    }
+
+    console.log('Testing GitLab connectivity...');
+    console.log(`Endpoint: ${GITLAB_ENDPOINT}`);
+    console.log(`Using custom cert: ${!!httpsAgent}`);
+    console.log(`Cert path: ${GITLAB_CA_CERT_PATH || 'none'}`);
+
+    // Test with a simple API call
+    const response = await gitlabApi.get(`/groups/${GITLAB_GROUP_ID}`, {
+      timeout: 10000
+    });
+
+    res.json({
+      success: true,
+      message: 'GitLab connection successful',
+      groupName: response.data.name,
+      groupPath: response.data.full_path,
+      endpoint: GITLAB_ENDPOINT,
+      hasCustomCert: !!httpsAgent
+    });
+
+  } catch (error) {
+    console.error('GitLab connectivity test failed:', error);
+    
+    let errorDetails = error.message;
+    if (error.code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' || 
+        error.code === 'CERT_UNTRUSTED' || 
+        error.code === 'SELF_SIGNED_CERT_IN_CHAIN') {
+      errorDetails = `SSL Certificate error: ${error.message}. Please check your GITLAB_CA_CERT_PATH configuration.`;
+    } else if (error.code === 'ENOTFOUND') {
+      errorDetails = `DNS resolution failed: ${error.message}. Please check your GITLAB_ENDPOINT.`;
+    } else if (error.response) {
+      errorDetails = `GitLab API error: ${error.response.status} ${error.response.statusText}`;
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'GitLab connection failed',
+      details: errorDetails,
+      code: error.code || 'UNKNOWN_ERROR',
+      endpoint: GITLAB_ENDPOINT,
+      hasCustomCert: !!httpsAgent,
+      certPath: GITLAB_CA_CERT_PATH || 'none'
+    });
+  }
 });
 
 // Get all issues from the GitLab group
@@ -180,9 +254,23 @@ app.get('/api/issues', async (req, res) => {
 
   } catch (error) {
     console.error('Error fetching issues:', error);
+    
+    // Provide more detailed error information for debugging
+    let errorDetails = error.message;
+    if (error.code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' || 
+        error.code === 'CERT_UNTRUSTED' || 
+        error.code === 'SELF_SIGNED_CERT_IN_CHAIN') {
+      errorDetails = `SSL Certificate error: ${error.message}. Please check your GITLAB_CA_CERT_PATH configuration.`;
+    } else if (error.code === 'ENOTFOUND') {
+      errorDetails = `DNS resolution failed: ${error.message}. Please check your GITLAB_ENDPOINT.`;
+    } else if (error.response) {
+      errorDetails = `GitLab API error: ${error.response.status} ${error.response.statusText}`;
+    }
+    
     res.status(500).json({ 
       error: 'Failed to fetch issues from GitLab',
-      details: error.message 
+      details: errorDetails,
+      code: error.code || 'UNKNOWN_ERROR'
     });
   }
 });
