@@ -115,11 +115,12 @@ Issues with the configured priority label (default: `priority`) will:
 
 ### GitLab Integration
 
-The backend fetches issues from all projects within the specified GitLab group, including subgroups. It uses the GitLab API to:
-- Retrieve all projects in the group
-- Fetch issues with the emporium label
+The backend efficiently fetches issues from the GitLab group using the optimized group issues endpoint. It uses the GitLab API to:
+- Fetch all issues with the emporium label from the group and subgroups in a single API call
 - Include both open and closed issues
+- Handle pagination automatically for large numbers of issues
 - Provide real-time data when refreshed
+- Scale efficiently even with many projects in the group
 
 ## Development
 

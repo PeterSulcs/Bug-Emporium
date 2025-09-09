@@ -91,6 +91,20 @@ async function debugCertificate() {
     console.log('✅ Connection successful!');
     console.log(`📊 Group: ${response.data.name} (${response.data.full_path})`);
     console.log(`🔗 API Version: ${response.headers['x-gitlab-api-version'] || 'unknown'}`);
+    
+    // Test the group issues endpoint
+    console.log('\n🔄 Testing group issues endpoint...');
+    try {
+      const issuesResponse = await axiosInstance.get(`/groups/${groupId}/issues`, {
+        params: {
+          per_page: 5,
+          state: 'all'
+        }
+      });
+      console.log(`✅ Group issues endpoint working! Found ${issuesResponse.data.length} issues (showing first 5)`);
+    } catch (issuesError) {
+      console.log(`⚠️  Group issues endpoint test failed: ${issuesError.message}`);
+    }
 
   } catch (error) {
     console.log('❌ Connection failed!');

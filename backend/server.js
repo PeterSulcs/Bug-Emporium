@@ -74,6 +74,9 @@ function categorizeIssues(issues) {
   const delivered = [];
 
   issues.forEach(issue => {
+    // Ensure labels is an array
+    const labels = Array.isArray(issue.labels) ? issue.labels : [];
+    
     if (issue.state === 'closed') {
       delivered.push(issue);
     } else if (issue.assignee) {
@@ -86,8 +89,11 @@ function categorizeIssues(issues) {
   // Sort each category by priority label and creation date
   const sortIssues = (issues) => {
     return issues.sort((a, b) => {
-      const aHasPriority = a.labels.includes(PRIORITY_LABEL);
-      const bHasPriority = b.labels.includes(PRIORITY_LABEL);
+      const aLabels = Array.isArray(a.labels) ? a.labels : [];
+      const bLabels = Array.isArray(b.labels) ? b.labels : [];
+      
+      const aHasPriority = aLabels.includes(PRIORITY_LABEL);
+      const bHasPriority = bLabels.includes(PRIORITY_LABEL);
       
       if (aHasPriority && !bHasPriority) return -1;
       if (!aHasPriority && bHasPriority) return 1;
@@ -135,7 +141,7 @@ app.get('/api/test-gitlab', async (req, res) => {
     console.log(`Using custom cert: ${!!httpsAgent}`);
     console.log(`Cert path: ${GITLAB_CA_CERT_PATH || 'none'}`);
 
-    // Test with a simple API call
+    // Test with a simple API call to get group info
     const response = await gitlabApi.get(`/groups/${GITLAB_GROUP_ID}`, {
       timeout: 10000
     });
@@ -184,65 +190,45 @@ app.get('/api/issues', async (req, res) => {
       });
     }
 
-    // Get all projects in the group
-    const projectsResponse = await gitlabApi.get(`/groups/${GITLAB_GROUP_ID}/projects`, {
-      params: {
-        include_subgroups: true,
-        per_page: 100
-      }
-    });
+    console.log(`Fetching issues for group ${GITLAB_GROUP_ID} with label '${EMPORIUM_LABEL}'`);
 
-    const projects = projectsResponse.data;
+    // Fetch all issues from the group using the efficient group issues endpoint
     const allIssues = [];
+    let page = 1;
+    const perPage = 100;
+    let hasMorePages = true;
 
-    // Fetch issues from each project
-    for (const project of projects) {
+    while (hasMorePages) {
       try {
-        const issuesResponse = await gitlabApi.get(`/projects/${project.id}/issues`, {
+        const response = await gitlabApi.get(`/groups/${GITLAB_GROUP_ID}/issues`, {
           params: {
             labels: EMPORIUM_LABEL,
-            state: 'opened',
-            per_page: 100
+            state: 'all', // Get both open and closed issues
+            per_page: perPage,
+            page: page,
+            include_subgroups: true,
+            order_by: 'created_at',
+            sort: 'desc'
           }
         });
-        
-        // Add project information to each issue
-        const projectIssues = issuesResponse.data.map(issue => ({
-          ...issue,
-          project_name: project.name,
-          project_path: project.path_with_namespace,
-          project_url: project.web_url
-        }));
-        
-        allIssues.push(...projectIssues);
+
+        const issues = response.data;
+        allIssues.push(...issues);
+
+        // Check if there are more pages
+        hasMorePages = issues.length === perPage;
+        page++;
+
+        console.log(`Fetched page ${page - 1}: ${issues.length} issues (total so far: ${allIssues.length})`);
+
       } catch (error) {
-        console.warn(`Failed to fetch issues from project ${project.name}:`, error.message);
+        console.error(`Error fetching page ${page}:`, error.message);
+        // If we get an error on a specific page, break the loop but return what we have
+        break;
       }
     }
 
-    // Also fetch closed issues
-    for (const project of projects) {
-      try {
-        const closedIssuesResponse = await gitlabApi.get(`/projects/${project.id}/issues`, {
-          params: {
-            labels: EMPORIUM_LABEL,
-            state: 'closed',
-            per_page: 100
-          }
-        });
-        
-        const projectClosedIssues = closedIssuesResponse.data.map(issue => ({
-          ...issue,
-          project_name: project.name,
-          project_path: project.path_with_namespace,
-          project_url: project.web_url
-        }));
-        
-        allIssues.push(...projectClosedIssues);
-      } catch (error) {
-        console.warn(`Failed to fetch closed issues from project ${project.name}:`, error.message);
-      }
-    }
+    console.log(`Total issues fetched: ${allIssues.length}`);
 
     const categorizedIssues = categorizeIssues(allIssues);
     
