@@ -76,6 +76,12 @@ body {
   border-radius: 12px;
   min-width: 120px;
   box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  transition: all 0.3s ease;
+}
+
+.stat-card.clickable:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
 }
 
 .stat-number {
@@ -90,10 +96,14 @@ body {
 }
 
 .sections {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 2rem;
   margin-top: 2rem;
+}
+
+.sections > div {
+  scroll-margin-top: 2rem;
 }
 
 .section {
@@ -102,6 +112,7 @@ body {
   padding: 1.5rem;
   border: 2px solid #e9ecef;
   transition: all 0.3s ease;
+  width: 100%;
 }
 
 .section:hover {
@@ -118,17 +129,6 @@ body {
   border-bottom: 2px solid #dee2e6;
 }
 
-.section-icon {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  color: white;
-  font-size: 0.9rem;
-}
 
 .section-title {
   font-size: 1.3rem;
@@ -137,22 +137,10 @@ body {
   margin: 0;
 }
 
-.for-sale .section-icon {
-  background: #28a745;
-}
-
-.sold .section-icon {
-  background: #ffc107;
-  color: #333;
-}
-
-.delivered .section-icon {
-  background: #6c757d;
-}
 
 .issue-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 1rem;
 }
 
@@ -303,7 +291,7 @@ body {
     margin: 1rem;
   }
   
-  .sections {
+  .issue-list {
     grid-template-columns: 1fr;
   }
   

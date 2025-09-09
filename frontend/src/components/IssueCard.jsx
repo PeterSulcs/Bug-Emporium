@@ -29,7 +29,7 @@ function IssueCard({ issue, priorityLabel }) {
       
       <div className="issue-meta">
         <span className="issue-project">
-          📁 {issue.project_name}
+          {issue.project_name}
         </span>
         {issue.assignee && (
           <span className="issue-assignee">
@@ -46,19 +46,6 @@ function IssueCard({ issue, priorityLabel }) {
         )}
       </div>
 
-      {issue.description && (
-        <div style={{ 
-          marginTop: '0.75rem', 
-          fontSize: '0.9rem', 
-          color: '#6c757d',
-          lineHeight: '1.4'
-        }}>
-          {issue.description.length > 150 
-            ? `${issue.description.substring(0, 150)}...` 
-            : issue.description
-          }
-        </div>
-      )}
 
       {issue.labels && issue.labels.length > 0 && (
         <div className="issue-labels">

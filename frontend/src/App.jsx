@@ -38,6 +38,16 @@ function App() {
     fetchIssues();
   };
 
+  const scrollToSection = (sectionId) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="app">
@@ -95,39 +105,57 @@ function App() {
           <div className="stat-number">{totalIssues}</div>
           <div className="stat-label">Total Issues</div>
         </div>
-        <div className="stat-card">
+        <div 
+          className="stat-card clickable" 
+          onClick={() => scrollToSection('for-sale-section')}
+          style={{ cursor: 'pointer' }}
+        >
           <div className="stat-number">{forSaleCount}</div>
           <div className="stat-label">For Sale</div>
         </div>
-        <div className="stat-card">
+        <div 
+          className="stat-card clickable" 
+          onClick={() => scrollToSection('sold-section')}
+          style={{ cursor: 'pointer' }}
+        >
           <div className="stat-number">{soldCount}</div>
           <div className="stat-label">Sold</div>
         </div>
-        <div className="stat-card">
+        <div 
+          className="stat-card clickable" 
+          onClick={() => scrollToSection('delivered-section')}
+          style={{ cursor: 'pointer' }}
+        >
           <div className="stat-number">{deliveredCount}</div>
           <div className="stat-label">Delivered</div>
         </div>
       </div>
 
       <div className="sections">
-        <IssueSection
-          title="🛒 For Sale"
-          issues={issues?.issues?.forSale || []}
-          className="for-sale"
-          priorityLabel={config?.priorityLabel}
-        />
-        <IssueSection
-          title="💰 Sold"
-          issues={issues?.issues?.sold || []}
-          className="sold"
-          priorityLabel={config?.priorityLabel}
-        />
-        <IssueSection
-          title="✅ Delivered"
-          issues={issues?.issues?.delivered || []}
-          className="delivered"
-          priorityLabel={config?.priorityLabel}
-        />
+        <div id="for-sale-section">
+          <IssueSection
+            title="🛒 For Sale"
+            issues={issues?.issues?.forSale || []}
+            className="for-sale"
+            priorityLabel={config?.priorityLabel}
+          />
+        </div>
+        <div id="sold-section">
+          <IssueSection
+            title="💰 Sold"
+            issues={issues?.issues?.sold || []}
+            className="sold"
+            priorityLabel={config?.priorityLabel}
+          />
+        </div>
+        <div id="delivered-section">
+          <IssueSection
+            title="✅ Delivered"
+            issues={issues?.issues?.delivered || []}
+            className="delivered"
+            priorityLabel={config?.priorityLabel}
+          />
+        </div>
       </div>
     </div>
   );

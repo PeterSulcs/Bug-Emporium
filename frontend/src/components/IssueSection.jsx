@@ -5,9 +5,6 @@ function IssueSection({ title, issues, className, priorityLabel }) {
   return (
     <div className={`section ${className}`}>
       <div className="section-header">
-        <div className="section-icon">
-          {title.includes('For Sale') ? '🛒' : title.includes('Sold') ? '💰' : '✅'}
-        </div>
         <h2 className="section-title">{title}</h2>
         <span style={{ 
           background: '#e9ecef', 
