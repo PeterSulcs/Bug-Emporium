@@ -5,8 +5,19 @@ import LoadingSpinner from './components/LoadingSpinner';
 import ErrorMessage from './components/ErrorMessage';
 import FeatureFunhouse from './components/FeatureFunhouse';
 
+/**
+ * Bug Emporium App with Deep Linking Support
+ * 
+ * Deep Linking URLs:
+ * - Bug Emporium: /?page=emporium or /#emporium
+ * - Feature Funhouse: /?page=funhouse or /#funhouse
+ * 
+ * The app supports both query parameters (?page=) and hash fragments (#)
+ * for maximum compatibility with different sharing scenarios.
+ */
 function App() {
   const [issues, setIssues] = useState(null);
+  const [features, setFeatures] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [config, setConfig] = useState(null);
@@ -16,28 +27,69 @@ function App() {
   });
   const [currentPage, setCurrentPage] = useState('emporium');
 
-  const fetchIssues = async () => {
+  // Initialize page from URL on component mount
+  useEffect(() => {
+    const hash = window.location.hash.slice(1); // Remove the # symbol
+    const urlParams = new URLSearchParams(window.location.search);
+    const pageParam = urlParams.get('page');
+    
+    // Check URL parameters first, then hash, then default to emporium
+    const pageFromUrl = pageParam || hash || 'emporium';
+    
+    if (pageFromUrl === 'funhouse' || pageFromUrl === 'emporium') {
+      setCurrentPage(pageFromUrl);
+    }
+  }, []);
+
+  // Update URL when page changes
+  useEffect(() => {
+    const url = new URL(window.location);
+    url.searchParams.set('page', currentPage);
+    // Update URL without causing a page reload
+    window.history.replaceState({}, '', url.toString());
+  }, [currentPage]);
+
+  // Handle browser back/forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const pageParam = urlParams.get('page');
+      const hash = window.location.hash.slice(1);
+      
+      const pageFromUrl = pageParam || hash || 'emporium';
+      if (pageFromUrl === 'funhouse' || pageFromUrl === 'emporium') {
+        setCurrentPage(pageFromUrl);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const fetchAllData = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const [issuesResponse, configResponse] = await Promise.all([
+      const [issuesResponse, featuresResponse, configResponse] = await Promise.all([
         axios.get('/api/issues'),
+        axios.get('/api/funhouse'),
         axios.get('/api/config')
       ]);
       
       setIssues(issuesResponse.data);
+      setFeatures(featuresResponse.data);
       setConfig(configResponse.data);
     } catch (err) {
       console.error('Error fetching data:', err);
-      setError(err.response?.data?.error || 'Failed to fetch issues');
+      setError(err.response?.data?.error || 'Failed to fetch data');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchIssues();
+    fetchAllData();
   }, []);
 
   useEffect(() => {
@@ -53,8 +105,14 @@ function App() {
     setCurrentPage(page);
   };
 
+  // Utility function to get shareable URL for current page
+  const getShareableUrl = (page = currentPage) => {
+    const baseUrl = window.location.origin + window.location.pathname;
+    return `${baseUrl}?page=${page}`;
+  };
+
   const handleRefresh = () => {
-    fetchIssues();
+    fetchAllData();
   };
 
   const scrollToSection = (sectionId) => {
@@ -134,7 +192,20 @@ function App() {
 
   // Render Feature Funhouse page
   if (currentPage === 'funhouse') {
-    return <FeatureFunhouse isDarkMode={isDarkMode} onToggleDarkMode={toggleDarkMode} />;
+    return (
+      <div className="app">
+        <Navigation />
+        <FeatureFunhouse 
+          isDarkMode={isDarkMode} 
+          onToggleDarkMode={toggleDarkMode}
+          features={features}
+          config={config}
+          loading={loading}
+          error={error}
+          onRefresh={handleRefresh}
+        />
+      </div>
+    );
   }
 
   // Render Bug Emporium page

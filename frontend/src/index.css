@@ -424,37 +424,37 @@ body {
 .main-navigation {
   display: flex;
   justify-content: center;
-  gap: 1rem;
-  margin-bottom: 2rem;
-  padding: 1rem;
-  background: var(--bg-secondary);
-  border-radius: 12px;
-  border: 2px solid var(--border-color);
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  background: transparent;
+  border-radius: 8px;
 }
 
 .nav-button {
-  background: var(--bg-tertiary);
-  border: 2px solid var(--border-color);
-  border-radius: 8px;
-  padding: 0.75rem 1.5rem;
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--text-primary);
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.3s ease;
-  min-width: 180px;
+  transition: all 0.2s ease;
+  min-width: auto;
 }
 
 .nav-button:hover {
   background: var(--bg-secondary);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px var(--shadow);
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
 }
 
 .nav-button.active {
-  background: var(--gradient-primary);
-  color: white;
-  border-color: transparent;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--text-primary);
+  font-weight: 600;
 }
 
 /* Feature Funhouse Styles */
@@ -814,12 +814,16 @@ body {
 /* Responsive Design for Funhouse */
 @media (max-width: 768px) {
   .main-navigation {
-    flex-direction: column;
-    gap: 0.5rem;
+    flex-direction: row;
+    gap: 0.25rem;
+    margin-bottom: 0.5rem;
+    padding: 0.25rem;
   }
   
   .nav-button {
     min-width: auto;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.8rem;
   }
   
   .feature-list {

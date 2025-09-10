@@ -188,39 +188,7 @@ function FeatureCard({ feature, config: _config, isDarkMode: _isDarkMode }) {
   );
 }
 
-function FeatureFunhouse({ isDarkMode, onToggleDarkMode }) {
-  const [features, setFeatures] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [config, setConfig] = useState(null);
-
-  const fetchFeatures = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const [featuresResponse, configResponse] = await Promise.all([
-        axios.get('/api/funhouse'),
-        axios.get('/api/config')
-      ]);
-      
-      setFeatures(featuresResponse.data);
-      setConfig(configResponse.data);
-    } catch (err) {
-      console.error('Error fetching funhouse data:', err);
-      setError(err.response?.data?.error || 'Failed to fetch features');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchFeatures();
-  }, []);
-
-  const handleRefresh = () => {
-    fetchFeatures();
-  };
+function FeatureFunhouse({ isDarkMode, onToggleDarkMode, features, config, loading, error, onRefresh }) {
 
   if (loading) {
     return (
@@ -263,7 +231,7 @@ function FeatureFunhouse({ isDarkMode, onToggleDarkMode }) {
             </button>
           </div>
         </div>
-        <ErrorMessage error={error} onRetry={handleRefresh} />
+        <ErrorMessage error={error} onRetry={onRefresh} />
       </div>
     );
   }
@@ -297,7 +265,7 @@ function FeatureFunhouse({ isDarkMode, onToggleDarkMode }) {
 
       <button 
         className="refresh-btn" 
-        onClick={handleRefresh}
+        onClick={onRefresh}
         disabled={loading}
       >
         {loading ? 'Refreshing...' : '🔄 Refresh Features'}
