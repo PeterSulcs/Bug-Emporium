@@ -9,6 +9,10 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [config, setConfig] = useState(null);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem('darkMode');
+    return saved ? JSON.parse(saved) : false;
+  });
 
   const fetchIssues = async () => {
     try {
@@ -34,6 +38,15 @@ function App() {
     fetchIssues();
   }, []);
 
+  useEffect(() => {
+    localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
+    document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode]);
+
+  const toggleDarkMode = () => {
+    setIsDarkMode(!isDarkMode);
+  };
+
   const handleRefresh = () => {
     fetchIssues();
   };
@@ -52,8 +65,19 @@ function App() {
     return (
       <div className="app">
         <div className="header">
-          <h1>🐛 Bug Emporium</h1>
-          <p>Your one-stop shop for issue triage</p>
+          <div className="header-top">
+            <div className="header-content">
+              <h1>🐛 Bug Emporium</h1>
+              <p>Your one-stop shop for issue triage</p>
+            </div>
+            <button 
+              className="theme-toggle" 
+              onClick={toggleDarkMode}
+              title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {isDarkMode ? '☀️' : '🌙'}
+            </button>
+          </div>
         </div>
         <LoadingSpinner />
       </div>
@@ -64,8 +88,19 @@ function App() {
     return (
       <div className="app">
         <div className="header">
-          <h1>🐛 Bug Emporium</h1>
-          <p>Your one-stop shop for issue triage</p>
+          <div className="header-top">
+            <div className="header-content">
+              <h1>🐛 Bug Emporium</h1>
+              <p>Your one-stop shop for issue triage</p>
+            </div>
+            <button 
+              className="theme-toggle" 
+              onClick={toggleDarkMode}
+              title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {isDarkMode ? '☀️' : '🌙'}
+            </button>
+          </div>
         </div>
         <ErrorMessage error={error} onRetry={handleRefresh} />
       </div>
@@ -80,16 +115,27 @@ function App() {
   return (
     <div className="app">
       <div className="header">
-        <h1>🐛 Bug Emporium</h1>
-        <p>Your one-stop shop for issue triage</p>
-        {config && (
-          <p style={{ fontSize: '0.9rem', color: '#7f8c8d', marginTop: '0.5rem' }}>
-            Showing issues with <strong>{config.emporiumLabel}</strong> label
-            {config.priorityLabel && (
-              <span> • Priority label: <strong>{config.priorityLabel}</strong></span>
+        <div className="header-top">
+          <div className="header-content">
+            <h1>🐛 Bug Emporium</h1>
+            <p>Your one-stop shop for issue triage</p>
+            {config && (
+              <p style={{ fontSize: '0.9rem', color: '#7f8c8d', marginTop: '0.5rem' }}>
+                Showing issues with <strong>{config.emporiumLabel}</strong> label
+                {config.priorityLabel && (
+                  <span> • Priority label: <strong>{config.priorityLabel}</strong></span>
+                )}
+              </p>
             )}
-          </p>
-        )}
+          </div>
+          <button 
+            className="theme-toggle" 
+            onClick={toggleDarkMode}
+            title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {isDarkMode ? '☀️' : '🌙'}
+          </button>
+        </div>
       </div>
 
       <button 
