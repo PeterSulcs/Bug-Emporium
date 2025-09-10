@@ -553,7 +553,7 @@ function MRMedic({ mergeRequests, loading, error, onRefresh }) {
 
                   {mr.labels && mr.labels.length > 0 && (
                     <div className="mr-labels">
-                      {mr.labels.map((label, index) => (
+                      {mr.labels.map((label, _index) => (
                         <span key={label} className="label-badge">
                           {label}
                         </span>
