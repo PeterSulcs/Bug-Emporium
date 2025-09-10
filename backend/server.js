@@ -62,6 +62,7 @@ const GITLAB_GROUP_ID = process.env.GITLAB_GROUP_ID;
 const EMPORIUM_LABEL = process.env.EMPORIUM_LABEL || 'emporium';
 const PRIORITY_LABEL = process.env.PRIORITY_LABEL || 'priority';
 const FUNHOUSE_LABEL = process.env.FUNHOUSE_LABEL || 'funhouse';
+const IGNORE_LABELS = process.env.IGNORE_LABELS ? process.env.IGNORE_LABELS.split(',').map(label => label.trim()) : ['renovate', 'dependabot'];
 const GITLAB_CA_CERT_PATH = process.env.GITLAB_CA_CERT_PATH;
 
 // Create HTTPS agent with custom CA certificate if provided
@@ -177,6 +178,7 @@ app.get('/api/config', (req, res) => {
     emporiumLabel: EMPORIUM_LABEL,
     priorityLabel: PRIORITY_LABEL,
     funhouseLabel: FUNHOUSE_LABEL,
+    ignoreLabels: IGNORE_LABELS,
     gitlabEndpoint: GITLAB_ENDPOINT,
     hasCustomCert: !!httpsAgent,
     certPath: GITLAB_CA_CERT_PATH || null
@@ -467,6 +469,193 @@ async function spiderLinkedIssues(issue, gitlabApi, visited = new Set(), rootIss
   }
 }
 
+// Get all merge requests from the GitLab group
+app.get('/api/merge-requests', async (req, res) => {
+  try {
+    if (!GITLAB_TOKEN || !GITLAB_GROUP_ID) {
+      return res.status(500).json({ 
+        error: 'GitLab configuration missing. Please check your environment variables.' 
+      });
+    }
+
+    // Check cache first
+    const cacheKey = getCacheKey('merge-requests', { 
+      groupId: GITLAB_GROUP_ID, 
+      ignoreLabels: IGNORE_LABELS.join(','),
+      notLabels: IGNORE_LABELS.join(',')
+    });
+    const cachedData = getCachedData(cacheKey);
+    if (cachedData) {
+      return res.json(cachedData);
+    }
+
+    console.log(`Fetching merge requests for group ${GITLAB_GROUP_ID}`);
+
+    // Fetch all merge requests from the group
+    const allMergeRequests = [];
+    let page = 1;
+    const perPage = 100;
+    let hasMorePages = true;
+
+    while (hasMorePages) {
+      try {
+        // Build API parameters with ignore labels filtering
+        const apiParams = {
+          state: 'opened', // Only get open merge requests
+          per_page: perPage,
+          page: page,
+          include_subgroups: true,
+          order_by: 'created_at',
+          sort: 'desc',
+          with_merge_status_recheck: true
+        };
+
+        // Add ignore labels filtering at API level
+        if (IGNORE_LABELS.length > 0) {
+          // GitLab API supports not[labels] parameter to exclude labels
+          apiParams['not[labels]'] = IGNORE_LABELS.join(',');
+        }
+
+        const mergeRequests = await cachedGitlabApiCall(`/groups/${GITLAB_GROUP_ID}/merge_requests`, apiParams);
+
+        allMergeRequests.push(...mergeRequests);
+
+        // Check if there are more pages
+        hasMorePages = mergeRequests.length === perPage;
+        page++;
+
+        console.log(`Fetched MR page ${page - 1}: ${mergeRequests.length} merge requests (total so far: ${allMergeRequests.length})`);
+
+      } catch (error) {
+        console.error(`Error fetching MR page ${page}:`, error.message);
+        break;
+      }
+    }
+
+    console.log(`Total merge requests fetched: ${allMergeRequests.length} (already filtered at API level)`);
+
+    // Fetch project names and additional MR details for all unique project IDs
+    const projectIds = [...new Set(allMergeRequests.map(mr => mr.project_id))];
+    const projectNames = {};
+    
+    console.log(`Fetching project names for ${projectIds.length} projects...`);
+    
+    for (const projectId of projectIds) {
+      try {
+        const projectData = await cachedGitlabApiCall(`/projects/${projectId}`, {
+          simple: true
+        });
+        projectNames[projectId] = projectData.name;
+      } catch (error) {
+        console.warn(`Failed to fetch project name for project ${projectId}:`, error.message);
+        projectNames[projectId] = `Project ${projectId}`;
+      }
+    }
+
+    // Fetch additional details for each merge request
+    console.log('Fetching additional MR details...');
+    const enrichedMergeRequests = [];
+    
+    for (const mr of allMergeRequests) {
+      try {
+        // Get approvals
+        const approvals = await cachedGitlabApiCall(`/projects/${mr.project_id}/merge_requests/${mr.iid}/approvals`);
+        
+        // Get linked issues
+        const linkedIssues = [];
+        if (mr.description) {
+          const issueMatches = mr.description.match(/#(\d+)/g);
+          if (issueMatches) {
+            for (const match of issueMatches) {
+              const issueId = parseInt(match.substring(1));
+              try {
+                const issue = await cachedGitlabApiCall(`/projects/${mr.project_id}/issues/${issueId}`);
+                linkedIssues.push({
+                  id: issue.id,
+                  iid: issue.iid,
+                  title: issue.title,
+                  state: issue.state,
+                  web_url: issue.web_url
+                });
+              } catch (error) {
+                console.warn(`Failed to fetch linked issue ${issueId}:`, error.message);
+              }
+            }
+          }
+        }
+
+        // Get review app URL from environment variables or MR description
+        let reviewAppUrl = null;
+        if (mr.description) {
+          const reviewAppMatch = mr.description.match(/review[_-]?app[:\s]+(https?:\/\/[^\s]+)/i);
+          if (reviewAppMatch) {
+            reviewAppUrl = reviewAppMatch[1];
+          }
+        }
+
+        const enrichedMR = {
+          ...mr,
+          project_name: projectNames[mr.project_id] || `Project ${mr.project_id}`,
+          approvals: {
+            approved: approvals.approved,
+            approvals_required: approvals.approvals_required,
+            approvals_left: approvals.approvals_left,
+            approvers: approvals.approvers || [],
+            approved_by: approvals.approved_by || []
+          },
+          linked_issues: linkedIssues,
+          review_app_url: reviewAppUrl,
+          is_draft: mr.draft || mr.title.toLowerCase().includes('[draft]') || mr.title.toLowerCase().includes('wip:')
+        };
+
+        enrichedMergeRequests.push(enrichedMR);
+      } catch (error) {
+        console.warn(`Failed to enrich MR ${mr.iid}:`, error.message);
+        // Add basic MR data even if enrichment fails
+        enrichedMergeRequests.push({
+          ...mr,
+          project_name: projectNames[mr.project_id] || `Project ${mr.project_id}`,
+          approvals: { approved: false, approvals_required: 0, approvals_left: 0, approvers: [], approved_by: [] },
+          linked_issues: [],
+          review_app_url: null,
+          is_draft: mr.draft || mr.title.toLowerCase().includes('[draft]') || mr.title.toLowerCase().includes('wip:')
+        });
+      }
+    }
+
+    const responseData = {
+      merge_requests: enrichedMergeRequests,
+      total: enrichedMergeRequests.length,
+      timestamp: new Date().toISOString()
+    };
+
+    // Cache the response
+    setCachedData(cacheKey, responseData);
+    
+    res.json(responseData);
+
+  } catch (error) {
+    console.error('Error fetching merge requests:', error);
+    
+    let errorDetails = error.message;
+    if (error.code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' || 
+        error.code === 'CERT_UNTRUSTED' || 
+        error.code === 'SELF_SIGNED_CERT_IN_CHAIN') {
+      errorDetails = `SSL Certificate error: ${error.message}. Please check your GITLAB_CA_CERT_PATH configuration.`;
+    } else if (error.code === 'ENOTFOUND') {
+      errorDetails = `DNS resolution failed: ${error.message}. Please check your GITLAB_ENDPOINT.`;
+    } else if (error.response) {
+      errorDetails = `GitLab API error: ${error.response.status} ${error.response.statusText}`;
+    }
+    
+    res.status(500).json({ 
+      error: 'Failed to fetch merge requests from GitLab',
+      details: errorDetails,
+      code: error.code || 'UNKNOWN_ERROR'
+    });
+  }
+});
+
 // Get Feature Funhouse data
 app.get('/api/funhouse', async (req, res) => {
   try {
@@ -635,4 +824,5 @@ app.listen(PORT, () => {
   console.log(`GitLab Endpoint: ${GITLAB_ENDPOINT}`);
   console.log(`Emporium Label: ${EMPORIUM_LABEL}`);
   console.log(`Priority Label: ${PRIORITY_LABEL}`);
+  console.log(`Ignore Labels: ${IGNORE_LABELS.join(', ')}`);
 });

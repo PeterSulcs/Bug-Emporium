@@ -4,6 +4,7 @@ import IssueSection from './components/IssueSection';
 import LoadingSpinner from './components/LoadingSpinner';
 import ErrorMessage from './components/ErrorMessage';
 import FeatureFunhouse from './components/FeatureFunhouse';
+import MRMedic from './components/MRMedic';
 
 /**
  * Bug Emporium App with Deep Linking Support
@@ -11,6 +12,7 @@ import FeatureFunhouse from './components/FeatureFunhouse';
  * Deep Linking URLs:
  * - Bug Emporium: /?page=emporium or /#emporium
  * - Feature Funhouse: /?page=funhouse or /#funhouse
+ * - MR Medic: /?page=medic or /#medic
  * 
  * The app supports both query parameters (?page=) and hash fragments (#)
  * for maximum compatibility with different sharing scenarios.
@@ -18,11 +20,14 @@ import FeatureFunhouse from './components/FeatureFunhouse';
 function App() {
   const [issues, setIssues] = useState(null);
   const [features, setFeatures] = useState(null);
+  const [mergeRequests, setMergeRequests] = useState(null);
   // Independent loading/error states
   const [issuesLoading, setIssuesLoading] = useState(true);
   const [issuesError, setIssuesError] = useState(null);
   const [featuresLoading, setFeaturesLoading] = useState(true);
   const [featuresError, setFeaturesError] = useState(null);
+  const [mergeRequestsLoading, setMergeRequestsLoading] = useState(true);
+  const [mergeRequestsError, setMergeRequestsError] = useState(null);
   const [_configLoading, setConfigLoading] = useState(true);
   const [_configError, setConfigError] = useState(null);
   const [config, setConfig] = useState(null);
@@ -42,7 +47,7 @@ function App() {
     // Check URL parameters first, then hash, then default to emporium
     const pageFromUrl = pageParam || hash || 'emporium';
     
-    if (pageFromUrl === 'funhouse' || pageFromUrl === 'emporium') {
+    if (pageFromUrl === 'funhouse' || pageFromUrl === 'emporium' || pageFromUrl === 'medic') {
       setCurrentPage(pageFromUrl);
     }
   }, []);
@@ -63,7 +68,7 @@ function App() {
       const hash = window.location.hash.slice(1);
       
       const pageFromUrl = pageParam || hash || 'emporium';
-      if (pageFromUrl === 'funhouse' || pageFromUrl === 'emporium') {
+      if (pageFromUrl === 'funhouse' || pageFromUrl === 'emporium' || pageFromUrl === 'medic') {
         setCurrentPage(pageFromUrl);
       }
     };
@@ -78,12 +83,15 @@ function App() {
     setIssuesError(null);
     setFeaturesLoading(true);
     setFeaturesError(null);
+    setMergeRequestsLoading(true);
+    setMergeRequestsError(null);
     setConfigLoading(true);
     setConfigError(null);
 
-    const [issuesResult, featuresResult, configResult] = await Promise.allSettled([
+    const [issuesResult, featuresResult, mergeRequestsResult, configResult] = await Promise.allSettled([
       axios.get('/api/issues'),
       axios.get('/api/funhouse'),
+      axios.get('/api/merge-requests'),
       axios.get('/api/config')
     ]);
 
@@ -106,6 +114,16 @@ function App() {
       setFeaturesError(featuresResult.reason?.response?.data?.error || 'Failed to fetch funhouse');
     }
     setFeaturesLoading(false);
+
+    // merge requests
+    if (mergeRequestsResult.status === 'fulfilled') {
+      setMergeRequests(mergeRequestsResult.value.data);
+      setMergeRequestsError(null);
+    } else {
+      console.error('Error fetching merge requests:', mergeRequestsResult.reason);
+      setMergeRequestsError(mergeRequestsResult.reason?.response?.data?.error || 'Failed to fetch merge requests');
+    }
+    setMergeRequestsLoading(false);
 
     // config
     if (configResult.status === 'fulfilled') {
@@ -180,6 +198,12 @@ function App() {
       >
         🎪 Feature Funhouse
       </button>
+      <button 
+        className={`nav-button ${currentPage === 'medic' ? 'active' : ''}`}
+        onClick={() => navigateToPage('medic')}
+      >
+        🏥 MR Medic
+      </button>
     </nav>
   );
 
@@ -213,7 +237,7 @@ function App() {
             <button 
               className="user-menu-item"
               onClick={handleRefresh}
-              disabled={issuesLoading || featuresLoading}
+              disabled={issuesLoading || featuresLoading || mergeRequestsLoading}
             >
               🔄 Refresh Data
             </button>
@@ -274,6 +298,22 @@ function App() {
           config={config}
           loading={featuresLoading}
           error={featuresError}
+          onRefresh={handleRefresh}
+        />
+      </div>
+    );
+  }
+
+  // Render MR Medic page
+  if (currentPage === 'medic') {
+    return (
+      <div className="app">
+        <Navigation />
+        <UserMenu />
+        <MRMedic 
+          mergeRequests={mergeRequests}
+          loading={mergeRequestsLoading}
+          error={mergeRequestsError}
           onRefresh={handleRefresh}
         />
       </div>
