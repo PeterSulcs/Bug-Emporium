@@ -12,6 +12,7 @@ const PORT = process.env.PORT || 3001;
 // Cache configuration
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes in milliseconds
 const PROJECT_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours for project names (they rarely change)
+const USER_CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days for user names (they almost never change)
 const cache = new Map();
 
 // Cache helper functions
@@ -542,28 +543,64 @@ app.get('/api/merge-requests', async (req, res) => {
 
     console.log(`Total merge requests fetched: ${allMergeRequests.length} (already filtered at API level)`);
 
-    // Fetch project names and additional MR details for all unique project IDs
+    // Fetch project details and user names for all unique IDs
     const projectIds = [...new Set(allMergeRequests.map(mr => mr.project_id))];
-    const projectNames = {};
+    const userIds = [...new Set(allMergeRequests.flatMap(mr => [
+      ...(mr.assignees || []).map(a => a.id),
+      ...(mr.reviewers || []).map(r => r.id),
+      mr.author?.id
+    ].filter(Boolean)))];
     
-    console.log(`Fetching project names for ${projectIds.length} projects in parallel...`);
+    const projectDetails = {};
+    const userNames = {};
     
-    // Fetch project names in parallel batches for better performance
+    console.log(`Fetching project details for ${projectIds.length} projects and user names for ${userIds.length} users in parallel...`);
+    
+    // Fetch project details in parallel
     const projectPromises = projectIds.map(async (projectId) => {
       try {
         const projectData = await cachedGitlabApiCall(`/projects/${projectId}`, {
           simple: true
         }, PROJECT_CACHE_TTL);
-        return { projectId, name: projectData.name };
+        return { 
+          projectId, 
+          name: projectData.name,
+          path_with_namespace: projectData.path_with_namespace,
+          namespace: projectData.namespace
+        };
       } catch (error) {
-        console.warn(`Failed to fetch project name for project ${projectId}:`, error.message);
-        return { projectId, name: `Project ${projectId}` };
+        console.warn(`Failed to fetch project details for project ${projectId}:`, error.message);
+        return { 
+          projectId, 
+          name: `Project ${projectId}`,
+          path_with_namespace: `project-${projectId}`,
+          namespace: { full_path: 'unknown' }
+        };
       }
     });
     
-    const projectResults = await Promise.all(projectPromises);
-    projectResults.forEach(({ projectId, name }) => {
-      projectNames[projectId] = name;
+    // Fetch user names in parallel
+    const userPromises = userIds.map(async (userId) => {
+      try {
+        const userData = await cachedGitlabApiCall(`/users/${userId}`, {}, USER_CACHE_TTL);
+        return { userId, name: userData.name, username: userData.username };
+      } catch (error) {
+        console.warn(`Failed to fetch user name for user ${userId}:`, error.message);
+        return { userId, name: `User ${userId}`, username: `user${userId}` };
+      }
+    });
+    
+    const [projectResults, userResults] = await Promise.all([
+      Promise.all(projectPromises),
+      Promise.all(userPromises)
+    ]);
+    
+    projectResults.forEach(({ projectId, name, path_with_namespace, namespace }) => {
+      projectDetails[projectId] = { name, path_with_namespace, namespace };
+    });
+    
+    userResults.forEach(({ userId, name, username }) => {
+      userNames[userId] = { name, username };
     });
 
     // Enrich merge requests with additional data (approvals are already included in the API response)
@@ -592,9 +629,42 @@ app.get('/api/merge-requests', async (req, res) => {
           }
         }
 
+        // Get project details
+        const project = projectDetails[mr.project_id] || { 
+          name: `Project ${mr.project_id}`, 
+          path_with_namespace: `project-${mr.project_id}`,
+          namespace: { full_path: 'unknown' }
+        };
+
+        // Enrich assignees and reviewers with user names
+        const enrichedAssignees = (mr.assignees || []).map(assignee => ({
+          ...assignee,
+          name: userNames[assignee.id]?.name || assignee.name || `User ${assignee.id}`,
+          username: userNames[assignee.id]?.username || assignee.username || `user${assignee.id}`
+        }));
+
+        const enrichedReviewers = (mr.reviewers || []).map(reviewer => ({
+          ...reviewer,
+          name: userNames[reviewer.id]?.name || reviewer.name || `User ${reviewer.id}`,
+          username: userNames[reviewer.id]?.username || reviewer.username || `user${reviewer.id}`
+        }));
+
+        const enrichedAuthor = mr.author ? {
+          ...mr.author,
+          name: userNames[mr.author.id]?.name || mr.author.name || `User ${mr.author.id}`,
+          username: userNames[mr.author.id]?.username || mr.author.username || `user${mr.author.id}`
+        } : null;
+
         const enrichedMR = {
           ...mr,
-          project_name: projectNames[mr.project_id] || `Project ${mr.project_id}`,
+          // Remove the old assignee field, use assignees array instead
+          assignee: undefined,
+          assignees: enrichedAssignees,
+          reviewers: enrichedReviewers,
+          author: enrichedAuthor,
+          project_name: project.name,
+          project_path: project.path_with_namespace,
+          project_namespace: project.namespace.full_path,
           // Approvals data is already included in the merge request response
           approvals: mr.approvals || {
             approved: false,
@@ -605,20 +675,36 @@ app.get('/api/merge-requests', async (req, res) => {
           },
           linked_issue_ids: linkedIssueIds,
           review_app_url: reviewAppUrl,
-          is_draft: mr.draft || mr.title.toLowerCase().includes('[draft]') || mr.title.toLowerCase().includes('wip:')
+          is_draft: mr.draft || mr.title.toLowerCase().includes('[draft]') || mr.title.toLowerCase().includes('wip:'),
+          created_at: mr.created_at,
+          labels: mr.labels || []
         };
 
         enrichedMergeRequests.push(enrichedMR);
       } catch (error) {
         console.warn(`Failed to enrich MR ${mr.iid}:`, error.message);
         // Add basic MR data even if enrichment fails
+        const project = projectDetails[mr.project_id] || { 
+          name: `Project ${mr.project_id}`, 
+          path_with_namespace: `project-${mr.project_id}`,
+          namespace: { full_path: 'unknown' }
+        };
+        
         enrichedMergeRequests.push({
           ...mr,
-          project_name: projectNames[mr.project_id] || `Project ${mr.project_id}`,
+          assignee: undefined,
+          assignees: mr.assignees || [],
+          reviewers: mr.reviewers || [],
+          author: mr.author,
+          project_name: project.name,
+          project_path: project.path_with_namespace,
+          project_namespace: project.namespace.full_path,
           approvals: mr.approvals || { approved: false, approvals_required: 0, approvals_left: 0, approvers: [], approved_by: [] },
           linked_issue_ids: [],
           review_app_url: null,
-          is_draft: mr.draft || mr.title.toLowerCase().includes('[draft]') || mr.title.toLowerCase().includes('wip:')
+          is_draft: mr.draft || mr.title.toLowerCase().includes('[draft]') || mr.title.toLowerCase().includes('wip:'),
+          created_at: mr.created_at,
+          labels: mr.labels || []
         });
       }
     }
