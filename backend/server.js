@@ -562,26 +562,12 @@ app.get('/api/merge-requests', async (req, res) => {
       try {
         // Approvals are already included in the merge request response, no need for separate API call
         
-        // Get linked issues
-        const linkedIssues = [];
+        // Extract linked issue IDs from description (but don't fetch the full issue data)
+        const linkedIssueIds = [];
         if (mr.description) {
           const issueMatches = mr.description.match(/#(\d+)/g);
           if (issueMatches) {
-            for (const match of issueMatches) {
-              const issueId = parseInt(match.substring(1));
-              try {
-                const issue = await cachedGitlabApiCall(`/projects/${mr.project_id}/issues/${issueId}`);
-                linkedIssues.push({
-                  id: issue.id,
-                  iid: issue.iid,
-                  title: issue.title,
-                  state: issue.state,
-                  web_url: issue.web_url
-                });
-              } catch (error) {
-                console.warn(`Failed to fetch linked issue ${issueId}:`, error.message);
-              }
-            }
+            linkedIssueIds.push(...issueMatches.map(match => parseInt(match.substring(1))));
           }
         }
 
@@ -605,7 +591,7 @@ app.get('/api/merge-requests', async (req, res) => {
             approvers: [],
             approved_by: []
           },
-          linked_issues: linkedIssues,
+          linked_issue_ids: linkedIssueIds,
           review_app_url: reviewAppUrl,
           is_draft: mr.draft || mr.title.toLowerCase().includes('[draft]') || mr.title.toLowerCase().includes('wip:')
         };
@@ -618,7 +604,7 @@ app.get('/api/merge-requests', async (req, res) => {
           ...mr,
           project_name: projectNames[mr.project_id] || `Project ${mr.project_id}`,
           approvals: mr.approvals || { approved: false, approvals_required: 0, approvals_left: 0, approvers: [], approved_by: [] },
-          linked_issues: [],
+          linked_issue_ids: [],
           review_app_url: null,
           is_draft: mr.draft || mr.title.toLowerCase().includes('[draft]') || mr.title.toLowerCase().includes('wip:')
         });

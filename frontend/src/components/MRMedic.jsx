@@ -285,23 +285,20 @@ function MRMedic({ mergeRequests, loading, error, onRefresh }) {
                   </div>
                 </div>
 
-                {mr.linked_issues && mr.linked_issues.length > 0 && (
+                {mr.linked_issue_ids && mr.linked_issue_ids.length > 0 && (
                   <div className="mr-linked-issues">
                     <strong>Linked Issues:</strong>
                     <ul>
-                      {mr.linked_issues.map(issue => (
-                        <li key={issue.id}>
+                      {mr.linked_issue_ids.map(issueId => (
+                        <li key={issueId}>
                           <a 
-                            href={issue.web_url} 
+                            href={`${mr.web_url.split('/merge_requests')[0]}/-/issues/${issueId}`}
                             target="_blank" 
                             rel="noopener noreferrer"
                             className="issue-link"
                           >
-                            #{issue.iid} {issue.title}
+                            #{issueId}
                           </a>
-                          <span className={`issue-state ${issue.state}`}>
-                            ({issue.state})
-                          </span>
                         </li>
                       ))}
                     </ul>
