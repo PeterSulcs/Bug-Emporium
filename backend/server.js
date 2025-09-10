@@ -11,6 +11,7 @@ const PORT = process.env.PORT || 3001;
 
 // Cache configuration
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes in milliseconds
+const PROJECT_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours for project names (they rarely change)
 const cache = new Map();
 
 // Cache helper functions
@@ -22,9 +23,9 @@ function getCacheKey(endpoint, params = {}) {
   return `${endpoint}:${JSON.stringify(sortedParams)}`;
 }
 
-function getCachedData(key) {
+function getCachedData(key, ttl = CACHE_TTL) {
   const cached = cache.get(key);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+  if (cached && Date.now() - cached.timestamp < ttl) {
     console.log(`✅ Cache hit for key: ${key}`);
     return cached.data;
   }
@@ -35,12 +36,13 @@ function getCachedData(key) {
   return null;
 }
 
-function setCachedData(key, data) {
+function setCachedData(key, data, ttl = CACHE_TTL) {
   cache.set(key, {
     data: data,
-    timestamp: Date.now()
+    timestamp: Date.now(),
+    ttl: ttl
   });
-  console.log(`💾 Cached data for key: ${key}`);
+  console.log(`💾 Cached data for key: ${key} (TTL: ${ttl / 1000 / 60} minutes)`);
 }
 
 function clearCache() {
@@ -109,9 +111,9 @@ const gitlabApi = axios.create({
 });
 
 // Cached GitLab API helper
-async function cachedGitlabApiCall(endpoint, params = {}) {
+async function cachedGitlabApiCall(endpoint, params = {}, ttl = CACHE_TTL) {
   const cacheKey = getCacheKey(`gitlab:${endpoint}`, params);
-  const cachedData = getCachedData(cacheKey);
+  const cachedData = getCachedData(cacheKey, ttl);
   
   if (cachedData) {
     return cachedData;
@@ -119,7 +121,7 @@ async function cachedGitlabApiCall(endpoint, params = {}) {
   
   console.log(`🌐 Making GitLab API call: ${endpoint}`);
   const response = await gitlabApi.get(endpoint, { params });
-  setCachedData(cacheKey, response.data);
+  setCachedData(cacheKey, response.data, ttl);
   return response.data;
 }
 
@@ -338,7 +340,7 @@ app.get('/api/issues', async (req, res) => {
       try {
         const projectData = await cachedGitlabApiCall(`/projects/${projectId}`, {
           simple: true // Only get basic project info
-        });
+        }, PROJECT_CACHE_TTL);
         projectNames[projectId] = projectData.name;
       } catch (error) {
         console.warn(`Failed to fetch project name for project ${projectId}:`, error.message);
@@ -544,7 +546,7 @@ app.get('/api/merge-requests', async (req, res) => {
       try {
         const projectData = await cachedGitlabApiCall(`/projects/${projectId}`, {
           simple: true
-        });
+        }, PROJECT_CACHE_TTL);
         projectNames[projectId] = projectData.name;
       } catch (error) {
         console.warn(`Failed to fetch project name for project ${projectId}:`, error.message);
@@ -552,14 +554,13 @@ app.get('/api/merge-requests', async (req, res) => {
       }
     }
 
-    // Fetch additional details for each merge request
-    console.log('Fetching additional MR details...');
+    // Enrich merge requests with additional data (approvals are already included in the API response)
+    console.log('Enriching merge requests with additional data...');
     const enrichedMergeRequests = [];
     
     for (const mr of allMergeRequests) {
       try {
-        // Get approvals
-        const approvals = await cachedGitlabApiCall(`/projects/${mr.project_id}/merge_requests/${mr.iid}/approvals`);
+        // Approvals are already included in the merge request response, no need for separate API call
         
         // Get linked issues
         const linkedIssues = [];
@@ -596,12 +597,13 @@ app.get('/api/merge-requests', async (req, res) => {
         const enrichedMR = {
           ...mr,
           project_name: projectNames[mr.project_id] || `Project ${mr.project_id}`,
-          approvals: {
-            approved: approvals.approved,
-            approvals_required: approvals.approvals_required,
-            approvals_left: approvals.approvals_left,
-            approvers: approvals.approvers || [],
-            approved_by: approvals.approved_by || []
+          // Approvals data is already included in the merge request response
+          approvals: mr.approvals || {
+            approved: false,
+            approvals_required: 0,
+            approvals_left: 0,
+            approvers: [],
+            approved_by: []
           },
           linked_issues: linkedIssues,
           review_app_url: reviewAppUrl,
@@ -615,7 +617,7 @@ app.get('/api/merge-requests', async (req, res) => {
         enrichedMergeRequests.push({
           ...mr,
           project_name: projectNames[mr.project_id] || `Project ${mr.project_id}`,
-          approvals: { approved: false, approvals_required: 0, approvals_left: 0, approvers: [], approved_by: [] },
+          approvals: mr.approvals || { approved: false, approvals_required: 0, approvals_left: 0, approvers: [], approved_by: [] },
           linked_issues: [],
           review_app_url: null,
           is_draft: mr.draft || mr.title.toLowerCase().includes('[draft]') || mr.title.toLowerCase().includes('wip:')
@@ -717,7 +719,7 @@ app.get('/api/funhouse', async (req, res) => {
       try {
         const projectData = await cachedGitlabApiCall(`/projects/${projectId}`, {
           simple: true
-        });
+        }, PROJECT_CACHE_TTL);
         projectNames[projectId] = projectData.name;
       } catch (error) {
         console.warn(`Failed to fetch project name for project ${projectId}:`, error.message);
