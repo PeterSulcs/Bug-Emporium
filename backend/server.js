@@ -9,6 +9,45 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Cache configuration
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes in milliseconds
+const cache = new Map();
+
+// Cache helper functions
+function getCacheKey(endpoint, params = {}) {
+  const sortedParams = Object.keys(params).sort().reduce((result, key) => {
+    result[key] = params[key];
+    return result;
+  }, {});
+  return `${endpoint}:${JSON.stringify(sortedParams)}`;
+}
+
+function getCachedData(key) {
+  const cached = cache.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    console.log(`✅ Cache hit for key: ${key}`);
+    return cached.data;
+  }
+  if (cached) {
+    console.log(`⏰ Cache expired for key: ${key}`);
+    cache.delete(key);
+  }
+  return null;
+}
+
+function setCachedData(key, data) {
+  cache.set(key, {
+    data: data,
+    timestamp: Date.now()
+  });
+  console.log(`💾 Cached data for key: ${key}`);
+}
+
+function clearCache() {
+  cache.clear();
+  console.log('🗑️  Cache cleared');
+}
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -68,6 +107,21 @@ const gitlabApi = axios.create({
   timeout: 30000 // 30 second timeout
 });
 
+// Cached GitLab API helper
+async function cachedGitlabApiCall(endpoint, params = {}) {
+  const cacheKey = getCacheKey(`gitlab:${endpoint}`, params);
+  const cachedData = getCachedData(cacheKey);
+  
+  if (cachedData) {
+    return cachedData;
+  }
+  
+  console.log(`🌐 Making GitLab API call: ${endpoint}`);
+  const response = await gitlabApi.get(endpoint, { params });
+  setCachedData(cacheKey, response.data);
+  return response.data;
+}
+
 // Helper function to categorize issues
 function categorizeIssues(issues) {
   const forSale = [];
@@ -126,6 +180,42 @@ app.get('/api/config', (req, res) => {
     gitlabEndpoint: GITLAB_ENDPOINT,
     hasCustomCert: !!httpsAgent,
     certPath: GITLAB_CA_CERT_PATH || null
+  });
+});
+
+// Clear cache endpoint
+app.post('/api/cache/clear', (req, res) => {
+  try {
+    clearCache();
+    res.json({ 
+      success: true, 
+      message: 'Cache cleared successfully',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error clearing cache:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to clear cache',
+      details: error.message
+    });
+  }
+});
+
+// Get cache status endpoint
+app.get('/api/cache/status', (req, res) => {
+  const cacheEntries = Array.from(cache.entries()).map(([key, value]) => ({
+    key: key,
+    timestamp: value.timestamp,
+    age: Date.now() - value.timestamp,
+    ttl: CACHE_TTL,
+    expiresIn: Math.max(0, CACHE_TTL - (Date.now() - value.timestamp))
+  }));
+  
+  res.json({
+    totalEntries: cache.size,
+    ttl: CACHE_TTL,
+    entries: cacheEntries
   });
 });
 
@@ -192,6 +282,13 @@ app.get('/api/issues', async (req, res) => {
       });
     }
 
+    // Check cache first
+    const cacheKey = getCacheKey('issues', { groupId: GITLAB_GROUP_ID, label: EMPORIUM_LABEL });
+    const cachedData = getCachedData(cacheKey);
+    if (cachedData) {
+      return res.json(cachedData);
+    }
+
     console.log(`Fetching issues for group ${GITLAB_GROUP_ID} with label '${EMPORIUM_LABEL}'`);
 
     // Fetch all issues from the group using the efficient group issues endpoint
@@ -202,19 +299,16 @@ app.get('/api/issues', async (req, res) => {
 
     while (hasMorePages) {
       try {
-        const response = await gitlabApi.get(`/groups/${GITLAB_GROUP_ID}/issues`, {
-          params: {
-            labels: EMPORIUM_LABEL,
-            state: 'all', // Get both open and closed issues
-            per_page: perPage,
-            page: page,
-            include_subgroups: true,
-            order_by: 'created_at',
-            sort: 'desc'
-          }
+        const issues = await cachedGitlabApiCall(`/groups/${GITLAB_GROUP_ID}/issues`, {
+          labels: EMPORIUM_LABEL,
+          state: 'all', // Get both open and closed issues
+          per_page: perPage,
+          page: page,
+          include_subgroups: true,
+          order_by: 'created_at',
+          sort: 'desc'
         });
 
-        const issues = response.data;
         allIssues.push(...issues);
 
         // Check if there are more pages
@@ -240,12 +334,10 @@ app.get('/api/issues', async (req, res) => {
     
     for (const projectId of projectIds) {
       try {
-        const projectResponse = await gitlabApi.get(`/projects/${projectId}`, {
-          params: {
-            simple: true // Only get basic project info
-          }
+        const projectData = await cachedGitlabApiCall(`/projects/${projectId}`, {
+          simple: true // Only get basic project info
         });
-        projectNames[projectId] = projectResponse.data.name;
+        projectNames[projectId] = projectData.name;
       } catch (error) {
         console.warn(`Failed to fetch project name for project ${projectId}:`, error.message);
         projectNames[projectId] = `Project ${projectId}`;
@@ -259,11 +351,16 @@ app.get('/api/issues', async (req, res) => {
 
     const categorizedIssues = categorizeIssues(allIssues);
     
-    res.json({
+    const responseData = {
       issues: categorizedIssues,
       total: allIssues.length,
       timestamp: new Date().toISOString()
-    });
+    };
+
+    // Cache the response
+    setCachedData(cacheKey, responseData);
+    
+    res.json(responseData);
 
   } catch (error) {
     console.error('Error fetching issues:', error);
@@ -307,8 +404,8 @@ async function extractLinkedIssueIds(issue, gitlabApi) {
   
   // Extract from comments/notes
   try {
-    const notesResponse = await gitlabApi.get(`/projects/${issue.project_id}/issues/${issue.iid}/notes`);
-    notesResponse.data.forEach(note => {
+    const notesData = await cachedGitlabApiCall(`/projects/${issue.project_id}/issues/${issue.iid}/notes`);
+    notesData.forEach(note => {
       if (note.body) {
         const noteMatches = note.body.match(/#(\d+)/g);
         if (noteMatches) {
@@ -353,8 +450,7 @@ async function spiderLinkedIssues(issue, gitlabApi, visited = new Set(), rootIss
       }
       
       try {
-        const linkedIssueResponse = await gitlabApi.get(`/projects/${issue.project_id}/issues/${linkedId}`);
-        const linkedIssue = linkedIssueResponse.data;
+        const linkedIssue = await cachedGitlabApiCall(`/projects/${issue.project_id}/issues/${linkedId}`);
         
         // Recursively spider this linked issue, passing the same visited set and root issue ID
         const spideredIssue = await spiderLinkedIssues(linkedIssue, gitlabApi, visited, rootIssueId, depth + 1, maxDepth);
@@ -380,6 +476,13 @@ app.get('/api/funhouse', async (req, res) => {
       });
     }
 
+    // Check cache first
+    const cacheKey = getCacheKey('funhouse', { groupId: GITLAB_GROUP_ID, label: FUNHOUSE_LABEL });
+    const cachedData = getCachedData(cacheKey);
+    if (cachedData) {
+      return res.json(cachedData);
+    }
+
     console.log(`Fetching funhouse features for group ${GITLAB_GROUP_ID} with label '${FUNHOUSE_LABEL}'`);
 
     // Fetch all funhouse issues
@@ -390,19 +493,16 @@ app.get('/api/funhouse', async (req, res) => {
 
     while (hasMorePages) {
       try {
-        const response = await gitlabApi.get(`/groups/${GITLAB_GROUP_ID}/issues`, {
-          params: {
-            labels: FUNHOUSE_LABEL,
-            state: 'all',
-            per_page: perPage,
-            page: page,
-            include_subgroups: true,
-            order_by: 'created_at',
-            sort: 'desc'
-          }
+        const features = await cachedGitlabApiCall(`/groups/${GITLAB_GROUP_ID}/issues`, {
+          labels: FUNHOUSE_LABEL,
+          state: 'all',
+          per_page: perPage,
+          page: page,
+          include_subgroups: true,
+          order_by: 'created_at',
+          sort: 'desc'
         });
 
-        const features = response.data;
         allFeatures.push(...features);
 
         hasMorePages = features.length === perPage;
@@ -426,10 +526,10 @@ app.get('/api/funhouse', async (req, res) => {
     
     for (const projectId of projectIds) {
       try {
-        const projectResponse = await gitlabApi.get(`/projects/${projectId}`, {
-          params: { simple: true }
+        const projectData = await cachedGitlabApiCall(`/projects/${projectId}`, {
+          simple: true
         });
-        projectNames[projectId] = projectResponse.data.name;
+        projectNames[projectId] = projectData.name;
       } catch (error) {
         console.warn(`Failed to fetch project name for project ${projectId}:`, error.message);
         projectNames[projectId] = `Project ${projectId}`;
@@ -478,14 +578,19 @@ app.get('/api/funhouse', async (req, res) => {
     const activeFeatures = featureTrees.filter(tree => tree.issue.state === 'opened');
     const completeFeatures = featureTrees.filter(tree => tree.issue.state === 'closed');
 
-    res.json({
+    const responseData = {
       features: {
         active: activeFeatures,
         complete: completeFeatures
       },
       total: allFeatures.length,
       timestamp: new Date().toISOString()
-    });
+    };
+
+    // Cache the response
+    setCachedData(cacheKey, responseData);
+
+    res.json(responseData);
 
   } catch (error) {
     console.error('Error fetching funhouse features:', error);

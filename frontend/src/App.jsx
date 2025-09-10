@@ -18,8 +18,13 @@ import FeatureFunhouse from './components/FeatureFunhouse';
 function App() {
   const [issues, setIssues] = useState(null);
   const [features, setFeatures] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // Independent loading/error states
+  const [issuesLoading, setIssuesLoading] = useState(true);
+  const [issuesError, setIssuesError] = useState(null);
+  const [featuresLoading, setFeaturesLoading] = useState(true);
+  const [featuresError, setFeaturesError] = useState(null);
+  const [_configLoading, setConfigLoading] = useState(true);
+  const [_configError, setConfigError] = useState(null);
   const [config, setConfig] = useState(null);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('darkMode');
@@ -67,25 +72,49 @@ function App() {
   }, []);
 
   const fetchAllData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const [issuesResponse, featuresResponse, configResponse] = await Promise.all([
-        axios.get('/api/issues'),
-        axios.get('/api/funhouse'),
-        axios.get('/api/config')
-      ]);
-      
-      setIssues(issuesResponse.data);
-      setFeatures(featuresResponse.data);
-      setConfig(configResponse.data);
-    } catch (err) {
-      console.error('Error fetching data:', err);
-      setError(err.response?.data?.error || 'Failed to fetch data');
-    } finally {
-      setLoading(false);
+    // reset loading/errors
+    setIssuesLoading(true);
+    setIssuesError(null);
+    setFeaturesLoading(true);
+    setFeaturesError(null);
+    setConfigLoading(true);
+    setConfigError(null);
+
+    const [issuesResult, featuresResult, configResult] = await Promise.allSettled([
+      axios.get('/api/issues'),
+      axios.get('/api/funhouse'),
+      axios.get('/api/config')
+    ]);
+
+    // issues
+    if (issuesResult.status === 'fulfilled') {
+      setIssues(issuesResult.value.data);
+      setIssuesError(null);
+    } else {
+      console.error('Error fetching issues:', issuesResult.reason);
+      setIssuesError(issuesResult.reason?.response?.data?.error || 'Failed to fetch issues');
     }
+    setIssuesLoading(false);
+
+    // funhouse
+    if (featuresResult.status === 'fulfilled') {
+      setFeatures(featuresResult.value.data);
+      setFeaturesError(null);
+    } else {
+      console.error('Error fetching funhouse:', featuresResult.reason);
+      setFeaturesError(featuresResult.reason?.response?.data?.error || 'Failed to fetch funhouse');
+    }
+    setFeaturesLoading(false);
+
+    // config
+    if (configResult.status === 'fulfilled') {
+      setConfig(configResult.value.data);
+      setConfigError(null);
+    } else {
+      console.error('Error fetching config:', configResult.reason);
+      setConfigError(configResult.reason?.response?.data?.error || 'Failed to fetch config');
+    }
+    setConfigLoading(false);
   };
 
   useEffect(() => {
@@ -142,50 +171,46 @@ function App() {
     </nav>
   );
 
-  if (loading && currentPage === 'emporium') {
+  if (issuesLoading && currentPage === 'emporium') {
     return (
       <div className="app">
         <Navigation />
         <div className="header">
-          <div className="header-top">
-            <div className="header-content">
-              <h1>🐛 Bug Emporium</h1>
-              <p>Your one-stop shop for issue triage</p>
-            </div>
-            <button 
-              className="theme-toggle" 
-              onClick={toggleDarkMode}
-              title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
-              {isDarkMode ? '☀️' : '🌙'}
-            </button>
+          <div className="header-content">
+            <h1>🐛 Bug Emporium</h1>
+            <p>Your one-stop shop for issue triage</p>
           </div>
         </div>
+        <button 
+          className="theme-toggle" 
+          onClick={toggleDarkMode}
+          title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {isDarkMode ? '☀️' : '🌙'}
+        </button>
         <LoadingSpinner />
       </div>
     );
   }
 
-  if (error && currentPage === 'emporium') {
+  if (issuesError && currentPage === 'emporium') {
     return (
       <div className="app">
         <Navigation />
         <div className="header">
-          <div className="header-top">
-            <div className="header-content">
-              <h1>🐛 Bug Emporium</h1>
-              <p>Your one-stop shop for issue triage</p>
-            </div>
-            <button 
-              className="theme-toggle" 
-              onClick={toggleDarkMode}
-              title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
-              {isDarkMode ? '☀️' : '🌙'}
-            </button>
+          <div className="header-content">
+            <h1>🐛 Bug Emporium</h1>
+            <p>Your one-stop shop for issue triage</p>
           </div>
         </div>
-        <ErrorMessage error={error} onRetry={handleRefresh} />
+        <button 
+          className="theme-toggle" 
+          onClick={toggleDarkMode}
+          title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {isDarkMode ? '☀️' : '🌙'}
+        </button>
+        <ErrorMessage error={issuesError} onRetry={handleRefresh} />
       </div>
     );
   }
@@ -200,8 +225,8 @@ function App() {
           onToggleDarkMode={toggleDarkMode}
           features={features}
           config={config}
-          loading={loading}
-          error={error}
+          loading={featuresLoading}
+          error={featuresError}
           onRefresh={handleRefresh}
         />
       </div>
@@ -218,35 +243,34 @@ function App() {
     <div className="app">
       <Navigation />
       <div className="header">
-        <div className="header-top">
-          <div className="header-content">
-            <h1>🐛 Bug Emporium</h1>
-            <p>Your one-stop shop for issue triage</p>
-            {config && (
-              <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
-                Showing issues with <strong>{config.emporiumLabel}</strong> label
-                {config.priorityLabel && (
-                  <span> • Priority label: <strong>{config.priorityLabel}</strong></span>
-                )}
-              </p>
-            )}
-          </div>
-          <button 
-            className="theme-toggle" 
-            onClick={toggleDarkMode}
-            title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-          >
-            {isDarkMode ? '☀️' : '🌙'}
-          </button>
+        <div className="header-content">
+          <h1>🐛 Bug Emporium</h1>
+          <p>Your one-stop shop for issue triage</p>
+          {config && (
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+              Showing issues with <strong>{config.emporiumLabel}</strong> label
+              {config.priorityLabel && (
+                <span> • Priority label: <strong>{config.priorityLabel}</strong></span>
+              )}
+            </p>
+          )}
         </div>
       </div>
 
       <button 
+        className="theme-toggle" 
+        onClick={toggleDarkMode}
+        title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+      >
+        {isDarkMode ? '☀️' : '🌙'}
+      </button>
+
+      <button 
         className="refresh-btn" 
         onClick={handleRefresh}
-        disabled={loading}
+        disabled={issuesLoading}
       >
-        {loading ? 'Refreshing...' : '🔄 Refresh Issues'}
+        {issuesLoading ? 'Refreshing...' : '🔄 Refresh Issues'}
       </button>
 
       <div className="stats">

@@ -190,47 +190,43 @@ function FeatureFunhouse({ isDarkMode, onToggleDarkMode, features, config, loadi
 
   if (loading) {
     return (
-      <div className="app">
+      <>
         <div className="header">
-          <div className="header-top">
-            <div className="header-content">
-              <h1>🎪 Feature Funhouse</h1>
-              <p>Where features come to play and get built!</p>
-            </div>
-            <button 
-              className="theme-toggle" 
-              onClick={onToggleDarkMode}
-              title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
-              {isDarkMode ? '☀️' : '🌙'}
-            </button>
+          <div className="header-content">
+            <h1>🎪 Feature Funhouse</h1>
+            <p>Where features come to play and get built!</p>
           </div>
         </div>
+        <button 
+          className="theme-toggle" 
+          onClick={onToggleDarkMode}
+          title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {isDarkMode ? '☀️' : '🌙'}
+        </button>
         <LoadingSpinner />
-      </div>
+      </>
     );
   }
 
   if (error) {
     return (
-      <div className="app">
+      <>
         <div className="header">
-          <div className="header-top">
-            <div className="header-content">
-              <h1>🎪 Feature Funhouse</h1>
-              <p>Where features come to play and get built!</p>
-            </div>
-            <button 
-              className="theme-toggle" 
-              onClick={onToggleDarkMode}
-              title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
-              {isDarkMode ? '☀️' : '🌙'}
-            </button>
+          <div className="header-content">
+            <h1>🎪 Feature Funhouse</h1>
+            <p>Where features come to play and get built!</p>
           </div>
         </div>
+        <button 
+          className="theme-toggle" 
+          onClick={onToggleDarkMode}
+          title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {isDarkMode ? '☀️' : '🌙'}
+        </button>
         <ErrorMessage error={error} onRetry={onRefresh} />
-      </div>
+      </>
     );
   }
 
@@ -239,27 +235,26 @@ function FeatureFunhouse({ isDarkMode, onToggleDarkMode, features, config, loadi
   const totalFeatures = features?.total || 0;
 
   return (
-    <div className="app funhouse-app">
+    <>
       <div className="header">
-        <div className="header-top">
-          <div className="header-content">
-            <h1>🎪 Feature Funhouse</h1>
-            <p>Where features come to play and get built!</p>
-            {config && (
-              <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
-                Showing features with <strong>{config.funhouseLabel}</strong> label
-              </p>
-            )}
-          </div>
-          <button 
-            className="theme-toggle" 
-            onClick={onToggleDarkMode}
-            title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-          >
-            {isDarkMode ? '☀️' : '🌙'}
-          </button>
+        <div className="header-content">
+          <h1>🎪 Feature Funhouse</h1>
+          <p>Where features come to play and get built!</p>
+          {config && (
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+              Showing features with <strong>{config.funhouseLabel}</strong> label
+            </p>
+          )}
         </div>
       </div>
+
+      <button 
+        className="theme-toggle" 
+        onClick={onToggleDarkMode}
+        title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+      >
+        {isDarkMode ? '☀️' : '🌙'}
+      </button>
 
       <button 
         className="refresh-btn" 
@@ -333,7 +328,7 @@ function FeatureFunhouse({ isDarkMode, onToggleDarkMode, features, config, loadi
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
