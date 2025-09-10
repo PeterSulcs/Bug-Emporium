@@ -17,23 +17,38 @@ function IssueCard({ issue, priorityLabel }) {
 
   return (
     <div className={`issue-card ${isPriority ? 'priority' : ''}`}>
-      <h3 className="issue-title">
-        <a 
-          href={issue.web_url} 
-          target="_blank" 
-          rel="noopener noreferrer"
-        >
-          {issue.title}
-        </a>
-      </h3>
+      <div className="issue-header">
+        <span className="issue-number">#{issue.iid}</span>
+        <h3 className="issue-title">
+          <a 
+            href={issue.web_url} 
+            target="_blank" 
+            rel="noopener noreferrer"
+          >
+            {issue.title}
+          </a>
+        </h3>
+      </div>
       
       <div className="issue-meta">
-        <span className="issue-project">
-          {issue.project_name}
-        </span>
+        {issue.project_name && (
+          <span className="issue-project">
+            {issue.project_name}
+          </span>
+        )}
         {issue.assignee && (
           <span className="issue-assignee">
-            👤 {getAssigneeName(issue.assignee)}
+            <img 
+              src={issue.assignee.avatar_url} 
+              alt={getAssigneeName(issue.assignee)}
+              className="assignee-avatar"
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.nextSibling.style.display = 'inline';
+              }}
+            />
+            <span className="assignee-fallback" style={{ display: 'none' }}>👤</span>
+            {getAssigneeName(issue.assignee)}
           </span>
         )}
         <span>

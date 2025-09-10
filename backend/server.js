@@ -230,6 +230,31 @@ app.get('/api/issues', async (req, res) => {
 
     console.log(`Total issues fetched: ${allIssues.length}`);
 
+    // Fetch project names for all unique project IDs
+    const projectIds = [...new Set(allIssues.map(issue => issue.project_id))];
+    const projectNames = {};
+    
+    console.log(`Fetching project names for ${projectIds.length} projects...`);
+    
+    for (const projectId of projectIds) {
+      try {
+        const projectResponse = await gitlabApi.get(`/projects/${projectId}`, {
+          params: {
+            simple: true // Only get basic project info
+          }
+        });
+        projectNames[projectId] = projectResponse.data.name;
+      } catch (error) {
+        console.warn(`Failed to fetch project name for project ${projectId}:`, error.message);
+        projectNames[projectId] = `Project ${projectId}`;
+      }
+    }
+
+    // Add project names to issues
+    allIssues.forEach(issue => {
+      issue.project_name = projectNames[issue.project_id] || `Project ${issue.project_id}`;
+    });
+
     const categorizedIssues = categorizeIssues(allIssues);
     
     res.json({
