@@ -106,7 +106,7 @@ function App() {
   };
 
   // Utility function to get shareable URL for current page
-  const getShareableUrl = (page = currentPage) => {
+  const _getShareableUrl = (page = currentPage) => {
     const baseUrl = window.location.origin + window.location.pathname;
     return `${baseUrl}?page=${page}`;
   };
