@@ -3,7 +3,7 @@ import axios from 'axios';
 import LoadingSpinner from './LoadingSpinner';
 import ErrorMessage from './ErrorMessage';
 
-function FeatureCard({ feature, config, isDarkMode }) {
+function FeatureCard({ feature, config: _config, isDarkMode: _isDarkMode }) {
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
