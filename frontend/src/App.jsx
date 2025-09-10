@@ -31,6 +31,7 @@ function App() {
     return saved ? JSON.parse(saved) : false;
   });
   const [currentPage, setCurrentPage] = useState('emporium');
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   // Initialize page from URL on component mount
   useEffect(() => {
@@ -144,6 +145,17 @@ function App() {
     fetchAllData();
   };
 
+  const handleClearCache = async () => {
+    try {
+      await axios.post('/api/cache/clear');
+      // Refresh data after clearing cache
+      fetchAllData();
+      setShowUserMenu(false);
+    } catch (error) {
+      console.error('Failed to clear cache:', error);
+    }
+  };
+
   const scrollToSection = (sectionId) => {
     const element = document.getElementById(sectionId);
     if (element) {
@@ -171,6 +183,52 @@ function App() {
     </nav>
   );
 
+  const UserMenu = () => (
+    <div className="user-menu">
+      <button 
+        className="user-menu-toggle"
+        onClick={() => setShowUserMenu(!showUserMenu)}
+        title="User Menu"
+      >
+        👤
+      </button>
+      {showUserMenu && (
+        <div className="user-menu-dropdown">
+          <div className="user-menu-header">
+            <h4>User Menu</h4>
+            <button 
+              className="user-menu-close"
+              onClick={() => setShowUserMenu(false)}
+            >
+              ✕
+            </button>
+          </div>
+          <div className="user-menu-content">
+            <button 
+              className="user-menu-item"
+              onClick={toggleDarkMode}
+            >
+              {isDarkMode ? '☀️' : '🌙'} {isDarkMode ? 'Light Mode' : 'Dark Mode'}
+            </button>
+            <button 
+              className="user-menu-item"
+              onClick={handleRefresh}
+              disabled={issuesLoading || featuresLoading}
+            >
+              🔄 Refresh Data
+            </button>
+            <button 
+              className="user-menu-item"
+              onClick={handleClearCache}
+            >
+              🗑️ Clear Server Cache
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   if (issuesLoading && currentPage === 'emporium') {
     return (
       <div className="app">
@@ -181,13 +239,7 @@ function App() {
             <p>Your one-stop shop for issue triage</p>
           </div>
         </div>
-        <button 
-          className="theme-toggle" 
-          onClick={toggleDarkMode}
-          title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-        >
-          {isDarkMode ? '☀️' : '🌙'}
-        </button>
+        <UserMenu />
         <LoadingSpinner />
       </div>
     );
@@ -203,13 +255,7 @@ function App() {
             <p>Your one-stop shop for issue triage</p>
           </div>
         </div>
-        <button 
-          className="theme-toggle" 
-          onClick={toggleDarkMode}
-          title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-        >
-          {isDarkMode ? '☀️' : '🌙'}
-        </button>
+        <UserMenu />
         <ErrorMessage error={issuesError} onRetry={handleRefresh} />
       </div>
     );
@@ -220,6 +266,7 @@ function App() {
     return (
       <div className="app">
         <Navigation />
+        <UserMenu />
         <FeatureFunhouse 
           isDarkMode={isDarkMode} 
           onToggleDarkMode={toggleDarkMode}
@@ -257,21 +304,7 @@ function App() {
         </div>
       </div>
 
-      <button 
-        className="theme-toggle" 
-        onClick={toggleDarkMode}
-        title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-      >
-        {isDarkMode ? '☀️' : '🌙'}
-      </button>
-
-      <button 
-        className="refresh-btn" 
-        onClick={handleRefresh}
-        disabled={issuesLoading}
-      >
-        {issuesLoading ? 'Refreshing...' : '🔄 Refresh Issues'}
-      </button>
+      <UserMenu />
 
       <div className="stats">
         <div className="stat-card">

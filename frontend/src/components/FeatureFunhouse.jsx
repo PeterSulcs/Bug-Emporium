@@ -186,7 +186,7 @@ function FeatureCard({ feature, config: _config, isDarkMode: _isDarkMode }) {
   );
 }
 
-function FeatureFunhouse({ isDarkMode, onToggleDarkMode, features, config, loading, error, onRefresh }) {
+function FeatureFunhouse({ isDarkMode, onToggleDarkMode: _onToggleDarkMode, features, config, loading, error, onRefresh }) {
 
   if (loading) {
     return (
@@ -197,13 +197,6 @@ function FeatureFunhouse({ isDarkMode, onToggleDarkMode, features, config, loadi
             <p>Where features come to play and get built!</p>
           </div>
         </div>
-        <button 
-          className="theme-toggle" 
-          onClick={onToggleDarkMode}
-          title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-        >
-          {isDarkMode ? '☀️' : '🌙'}
-        </button>
         <LoadingSpinner />
       </>
     );
@@ -218,13 +211,6 @@ function FeatureFunhouse({ isDarkMode, onToggleDarkMode, features, config, loadi
             <p>Where features come to play and get built!</p>
           </div>
         </div>
-        <button 
-          className="theme-toggle" 
-          onClick={onToggleDarkMode}
-          title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-        >
-          {isDarkMode ? '☀️' : '🌙'}
-        </button>
         <ErrorMessage error={error} onRetry={onRefresh} />
       </>
     );
@@ -248,21 +234,6 @@ function FeatureFunhouse({ isDarkMode, onToggleDarkMode, features, config, loadi
         </div>
       </div>
 
-      <button 
-        className="theme-toggle" 
-        onClick={onToggleDarkMode}
-        title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-      >
-        {isDarkMode ? '☀️' : '🌙'}
-      </button>
-
-      <button 
-        className="refresh-btn" 
-        onClick={onRefresh}
-        disabled={loading}
-      >
-        {loading ? 'Refreshing...' : '🔄 Refresh Features'}
-      </button>
 
       <div className="funhouse-stats">
         <div className="funhouse-stat-card">
