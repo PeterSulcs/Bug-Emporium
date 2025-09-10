@@ -3,6 +3,7 @@ import axios from 'axios';
 import IssueSection from './components/IssueSection';
 import LoadingSpinner from './components/LoadingSpinner';
 import ErrorMessage from './components/ErrorMessage';
+import FeatureFunhouse from './components/FeatureFunhouse';
 
 function App() {
   const [issues, setIssues] = useState(null);
@@ -13,6 +14,7 @@ function App() {
     const saved = localStorage.getItem('darkMode');
     return saved ? JSON.parse(saved) : false;
   });
+  const [currentPage, setCurrentPage] = useState('emporium');
 
   const fetchIssues = async () => {
     try {
@@ -47,6 +49,10 @@ function App() {
     setIsDarkMode(!isDarkMode);
   };
 
+  const navigateToPage = (page) => {
+    setCurrentPage(page);
+  };
+
   const handleRefresh = () => {
     fetchIssues();
   };
@@ -61,9 +67,27 @@ function App() {
     }
   };
 
-  if (loading) {
+  const Navigation = () => (
+    <nav className="main-navigation">
+      <button 
+        className={`nav-button ${currentPage === 'emporium' ? 'active' : ''}`}
+        onClick={() => navigateToPage('emporium')}
+      >
+        🐛 Bug Emporium
+      </button>
+      <button 
+        className={`nav-button ${currentPage === 'funhouse' ? 'active' : ''}`}
+        onClick={() => navigateToPage('funhouse')}
+      >
+        🎪 Feature Funhouse
+      </button>
+    </nav>
+  );
+
+  if (loading && currentPage === 'emporium') {
     return (
       <div className="app">
+        <Navigation />
         <div className="header">
           <div className="header-top">
             <div className="header-content">
@@ -84,9 +108,10 @@ function App() {
     );
   }
 
-  if (error) {
+  if (error && currentPage === 'emporium') {
     return (
       <div className="app">
+        <Navigation />
         <div className="header">
           <div className="header-top">
             <div className="header-content">
@@ -107,6 +132,12 @@ function App() {
     );
   }
 
+  // Render Feature Funhouse page
+  if (currentPage === 'funhouse') {
+    return <FeatureFunhouse isDarkMode={isDarkMode} onToggleDarkMode={toggleDarkMode} />;
+  }
+
+  // Render Bug Emporium page
   const totalIssues = issues?.total || 0;
   const forSaleCount = issues?.issues?.forSale?.length || 0;
   const soldCount = issues?.issues?.sold?.length || 0;
@@ -114,13 +145,14 @@ function App() {
 
   return (
     <div className="app">
+      <Navigation />
       <div className="header">
         <div className="header-top">
           <div className="header-content">
             <h1>🐛 Bug Emporium</h1>
             <p>Your one-stop shop for issue triage</p>
             {config && (
-              <p style={{ fontSize: '0.9rem', color: '#7f8c8d', marginTop: '0.5rem' }}>
+              <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
                 Showing issues with <strong>{config.emporiumLabel}</strong> label
                 {config.priorityLabel && (
                   <span> • Priority label: <strong>{config.priorityLabel}</strong></span>
