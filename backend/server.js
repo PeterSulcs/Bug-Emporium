@@ -334,19 +334,25 @@ app.get('/api/issues', async (req, res) => {
     const projectIds = [...new Set(allIssues.map(issue => issue.project_id))];
     const projectNames = {};
     
-    console.log(`Fetching project names for ${projectIds.length} projects...`);
+    console.log(`Fetching project names for ${projectIds.length} projects in parallel...`);
     
-    for (const projectId of projectIds) {
+    // Fetch project names in parallel batches for better performance
+    const projectPromises = projectIds.map(async (projectId) => {
       try {
         const projectData = await cachedGitlabApiCall(`/projects/${projectId}`, {
           simple: true // Only get basic project info
         }, PROJECT_CACHE_TTL);
-        projectNames[projectId] = projectData.name;
+        return { projectId, name: projectData.name };
       } catch (error) {
         console.warn(`Failed to fetch project name for project ${projectId}:`, error.message);
-        projectNames[projectId] = `Project ${projectId}`;
+        return { projectId, name: `Project ${projectId}` };
       }
-    }
+    });
+    
+    const projectResults = await Promise.all(projectPromises);
+    projectResults.forEach(({ projectId, name }) => {
+      projectNames[projectId] = name;
+    });
 
     // Add project names to issues
     allIssues.forEach(issue => {
@@ -540,19 +546,25 @@ app.get('/api/merge-requests', async (req, res) => {
     const projectIds = [...new Set(allMergeRequests.map(mr => mr.project_id))];
     const projectNames = {};
     
-    console.log(`Fetching project names for ${projectIds.length} projects...`);
+    console.log(`Fetching project names for ${projectIds.length} projects in parallel...`);
     
-    for (const projectId of projectIds) {
+    // Fetch project names in parallel batches for better performance
+    const projectPromises = projectIds.map(async (projectId) => {
       try {
         const projectData = await cachedGitlabApiCall(`/projects/${projectId}`, {
           simple: true
         }, PROJECT_CACHE_TTL);
-        projectNames[projectId] = projectData.name;
+        return { projectId, name: projectData.name };
       } catch (error) {
         console.warn(`Failed to fetch project name for project ${projectId}:`, error.message);
-        projectNames[projectId] = `Project ${projectId}`;
+        return { projectId, name: `Project ${projectId}` };
       }
-    }
+    });
+    
+    const projectResults = await Promise.all(projectPromises);
+    projectResults.forEach(({ projectId, name }) => {
+      projectNames[projectId] = name;
+    });
 
     // Enrich merge requests with additional data (approvals are already included in the API response)
     console.log('Enriching merge requests with additional data...');
@@ -699,19 +711,25 @@ app.get('/api/funhouse', async (req, res) => {
     const projectIds = [...new Set(allFeatures.map(feature => feature.project_id))];
     const projectNames = {};
     
-    console.log(`Fetching project names for ${projectIds.length} projects...`);
+    console.log(`Fetching project names for ${projectIds.length} projects in parallel...`);
     
-    for (const projectId of projectIds) {
+    // Fetch project names in parallel batches for better performance
+    const projectPromises = projectIds.map(async (projectId) => {
       try {
         const projectData = await cachedGitlabApiCall(`/projects/${projectId}`, {
           simple: true
         }, PROJECT_CACHE_TTL);
-        projectNames[projectId] = projectData.name;
+        return { projectId, name: projectData.name };
       } catch (error) {
         console.warn(`Failed to fetch project name for project ${projectId}:`, error.message);
-        projectNames[projectId] = `Project ${projectId}`;
+        return { projectId, name: `Project ${projectId}` };
       }
-    }
+    });
+    
+    const projectResults = await Promise.all(projectPromises);
+    projectResults.forEach(({ projectId, name }) => {
+      projectNames[projectId] = name;
+    });
 
     // Add project names to features
     allFeatures.forEach(feature => {
