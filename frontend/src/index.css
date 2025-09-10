@@ -756,6 +756,13 @@ body {
   font-weight: 500;
 }
 
+.feature-assignees {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 .feature-assignee {
   background: #fff3cd;
   color: #856404;
@@ -765,6 +772,11 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.assignee-separator {
+  color: #856404;
+  font-weight: 500;
 }
 
 .feature-avatar {
@@ -877,6 +889,13 @@ body {
   padding: 0.2rem 0.4rem;
   border-radius: 4px;
   font-weight: 500;
+}
+
+.linked-issue-assignees {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
 }
 
 .linked-issue-assignee {

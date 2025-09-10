@@ -44,19 +44,24 @@ function FeatureCard({ feature, config: _config, isDarkMode: _isDarkMode }) {
                 {linkedIssue.issue.project_name}
               </span>
             )}
-            {linkedIssue.issue.assignee && (
-              <span className="linked-issue-assignee">
-                <img 
-                  src={linkedIssue.issue.assignee.avatar_url} 
-                  alt={getAssigneeName(linkedIssue.issue.assignee)}
-                  className="linked-issue-avatar"
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                    e.target.nextSibling.style.display = 'inline';
-                  }}
-                />
-                <span className="linked-issue-avatar-fallback" style={{ display: 'none' }}>👤</span>
-                {getAssigneeName(linkedIssue.issue.assignee)}
+            {linkedIssue.issue.assignees && linkedIssue.issue.assignees.length > 0 && (
+              <span className="linked-issue-assignees">
+                {linkedIssue.issue.assignees.map((assignee, index) => (
+                  <span key={assignee.id} className="linked-issue-assignee">
+                    <img 
+                      src={assignee.avatar_url} 
+                      alt={getAssigneeName(assignee)}
+                      className="linked-issue-avatar"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'inline';
+                      }}
+                    />
+                    <span className="linked-issue-avatar-fallback" style={{ display: 'none' }}>👤</span>
+                    {getAssigneeName(assignee)}
+                    {index < linkedIssue.issue.assignees.length - 1 && <span className="assignee-separator">, </span>}
+                  </span>
+                ))}
               </span>
             )}
             <span className="linked-issue-date">
@@ -151,19 +156,24 @@ function FeatureCard({ feature, config: _config, isDarkMode: _isDarkMode }) {
             🎪 {feature.issue.project_name}
           </span>
         )}
-        {feature.issue.assignee && (
-          <span className="feature-assignee">
-            <img 
-              src={feature.issue.assignee.avatar_url} 
-              alt={getAssigneeName(feature.issue.assignee)}
-              className="feature-avatar"
-              onError={(e) => {
-                e.target.style.display = 'none';
-                e.target.nextSibling.style.display = 'inline';
-              }}
-            />
-            <span className="feature-avatar-fallback" style={{ display: 'none' }}>👤</span>
-            {getAssigneeName(feature.issue.assignee)}
+        {feature.issue.assignees && feature.issue.assignees.length > 0 && (
+          <span className="feature-assignees">
+            {feature.issue.assignees.map((assignee, index) => (
+              <span key={assignee.id} className="feature-assignee">
+                <img 
+                  src={assignee.avatar_url} 
+                  alt={getAssigneeName(assignee)}
+                  className="feature-avatar"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.nextSibling.style.display = 'inline';
+                  }}
+                />
+                <span className="feature-avatar-fallback" style={{ display: 'none' }}>👤</span>
+                {getAssigneeName(assignee)}
+                {index < feature.issue.assignees.length - 1 && <span className="assignee-separator">, </span>}
+              </span>
+            ))}
           </span>
         )}
         <span className="feature-date">
@@ -194,7 +204,7 @@ function FeatureFunhouse({ isDarkMode, onToggleDarkMode: _onToggleDarkMode, feat
         <div className="header">
           <div className="header-content">
             <h1>🎪 Feature Funhouse</h1>
-            <p>Where features come to play and get built!</p>
+            <p>Welcome to the Circus!</p>
           </div>
         </div>
         <LoadingSpinner />
@@ -208,7 +218,7 @@ function FeatureFunhouse({ isDarkMode, onToggleDarkMode: _onToggleDarkMode, feat
         <div className="header">
           <div className="header-content">
             <h1>🎪 Feature Funhouse</h1>
-            <p>Where features come to play and get built!</p>
+            <p>Welcome to the Circus!</p>
           </div>
         </div>
         <ErrorMessage error={error} onRetry={onRefresh} />
@@ -225,7 +235,7 @@ function FeatureFunhouse({ isDarkMode, onToggleDarkMode: _onToggleDarkMode, feat
       <div className="header">
         <div className="header-content">
           <h1>🎪 Feature Funhouse</h1>
-          <p>Where features come to play and get built!</p>
+          <p>Welcome to the Circus!</p>
           {config && (
             <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
               Showing features with <strong>{config.funhouseLabel}</strong> label
