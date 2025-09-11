@@ -1536,12 +1536,12 @@ body {
   font-weight: 500;
 }
 
-.project-multiselect, .assignee-multiselect, .draft-selector, .approval-selector {
+.project-multiselect, .assignee-multiselect, .author-multiselect, .draft-selector, .approval-selector {
   position: relative;
   width: 100%;
 }
 
-.project-selector, .assignee-selector, .draft-selector, .approval-selector {
+.project-selector, .assignee-selector, .author-selector, .draft-selector, .approval-selector {
   position: relative;
 }
 

@@ -25,6 +25,7 @@ function MRMedic({ mergeRequests, loading, error, onRefresh }) {
     assignees: [], // Array of selected assignees
     approvalStatus: 'all', // 'all', 'approved', 'needs_approval', 'no_approval_required'
     projects: [], // Array of selected project paths
+    authors: [], // Array of selected MR authors
     sortBy: 'desc' // 'desc' for newest first, 'asc' for oldest first
   });
 
@@ -32,6 +33,8 @@ function MRMedic({ mergeRequests, loading, error, onRefresh }) {
   const [projectSearch, setProjectSearch] = useState('');
   const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
   const [assigneeSearch, setAssigneeSearch] = useState('');
+  const [showAuthorDropdown, setShowAuthorDropdown] = useState(false);
+  const [authorSearch, setAuthorSearch] = useState('');
   const [showDraftDropdown, setShowDraftDropdown] = useState(false);
   const [showApprovalDropdown, setShowApprovalDropdown] = useState(false);
 
@@ -59,6 +62,17 @@ function MRMedic({ mergeRequests, loading, error, onRefresh }) {
     return Array.from(projectSet).sort();
   }, [mergeRequests]);
 
+  // Get unique authors for filter dropdown
+  const authors = useMemo(() => {
+    const authorSet = new Set();
+    mergeRequests?.merge_requests?.forEach(mr => {
+      if (mr.author) {
+        authorSet.add(mr.author.name || mr.author.username);
+      }
+    });
+    return Array.from(authorSet).sort();
+  }, [mergeRequests]);
+
   // Filter projects based on search
   const filteredProjects = useMemo(() => {
     if (!projectSearch.trim()) return projects;
@@ -74,6 +88,14 @@ function MRMedic({ mergeRequests, loading, error, onRefresh }) {
       assignee.toLowerCase().includes(assigneeSearch.toLowerCase())
     );
   }, [assignees, assigneeSearch]);
+
+  // Filter authors based on search
+  const filteredAuthors = useMemo(() => {
+    if (!authorSearch.trim()) return authors;
+    return authors.filter(author => 
+      author.toLowerCase().includes(authorSearch.toLowerCase())
+    );
+  }, [authors, authorSearch]);
 
   // Filter and sort merge requests based on current filters
   const filteredMergeRequests = useMemo(() => {
@@ -98,9 +120,21 @@ function MRMedic({ mergeRequests, loading, error, onRefresh }) {
       }
 
       // Approval status filter
-      if (filters.approvalStatus === 'approved' && !mr.approvals.approved) return false;
-      if (filters.approvalStatus === 'needs_approval' && (mr.approvals.approved || mr.approvals.approvals_required === 0)) return false;
-      if (filters.approvalStatus === 'no_approval_required' && mr.approvals.approvals_required > 0) return false;
+      const approvalsRequired = mr?.approvals?.approvals_required ?? 0;
+      const approvalsLeft = mr?.approvals?.approvals_left ?? Math.max(approvalsRequired - (mr?.approvals?.approved_by?.length || 0), 0);
+      const isApproved = approvalsRequired > 0 && approvalsLeft === 0;
+      const needsApproval = approvalsRequired > 0 && approvalsLeft > 0;
+      const noApprovalRequired = approvalsRequired === 0;
+
+      if (filters.approvalStatus === 'approved' && !isApproved) return false;
+      if (filters.approvalStatus === 'needs_approval' && !needsApproval) return false;
+      if (filters.approvalStatus === 'no_approval_required' && !noApprovalRequired) return false;
+
+      // Author filter
+      if (filters.authors.length > 0) {
+        const authorName = mr.author ? (mr.author.name || mr.author.username) : '';
+        if (!filters.authors.includes(authorName)) return false;
+      }
 
       return true;
     });
@@ -143,6 +177,15 @@ function MRMedic({ mergeRequests, loading, error, onRefresh }) {
     }));
   };
 
+  const handleAuthorFilterChange = (author, isSelected) => {
+    setFilters(prev => ({
+      ...prev,
+      authors: isSelected
+        ? [...prev.authors, author]
+        : prev.authors.filter(a => a !== author)
+    }));
+  };
+
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -158,21 +201,26 @@ function MRMedic({ mergeRequests, loading, error, onRefresh }) {
       if (showApprovalDropdown && !event.target.closest('.approval-selector')) {
         setShowApprovalDropdown(false);
       }
+      if (showAuthorDropdown && !event.target.closest('.author-selector')) {
+        setShowAuthorDropdown(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showProjectDropdown, showAssigneeDropdown, showDraftDropdown, showApprovalDropdown]);
+  }, [showProjectDropdown, showAssigneeDropdown, showAuthorDropdown, showDraftDropdown, showApprovalDropdown]);
 
   const getApprovalStatusBadge = (approvals) => {
-    if (approvals.approvals_required === 0) {
+    const approvalsRequired = approvals?.approvals_required ?? 0;
+    const approvalsLeft = approvals?.approvals_left ?? Math.max(approvalsRequired - (approvals?.approved_by?.length || 0), 0);
+    if (approvalsRequired === 0) {
       return <span className="badge badge-info">No Approval Required</span>;
     }
-    if (approvals.approved) {
+    if (approvalsLeft === 0) {
       return <span className="badge badge-success">✅ Approved</span>;
     }
-    if (approvals.approvals_left > 0) {
-      return <span className="badge badge-warning">⏳ Needs {approvals.approvals_left} more</span>;
+    if (approvalsLeft > 0) {
+      return <span className="badge badge-warning">⏳ Needs {approvalsLeft} more</span>;
     }
     return <span className="badge badge-secondary">Pending</span>;
   };
@@ -390,6 +438,57 @@ function MRMedic({ mergeRequests, loading, error, onRefresh }) {
         </div>
 
         <div className="filter-group">
+          <label>Creators:</label>
+          <div className="author-multiselect">
+            <div className="author-selector">
+              <button 
+                type="button"
+                className="assignee-selector-button"
+                onClick={() => setShowAuthorDropdown(!showAuthorDropdown)}
+              >
+                {filters.authors.length === 0 
+                  ? 'All Creators' 
+                  : `${filters.authors.length} selected`}
+                <span className="dropdown-arrow">▼</span>
+              </button>
+
+              {showAuthorDropdown && (
+                <div className="assignee-dropdown">
+                  <div className="assignee-dropdown-header">
+                    <input
+                      type="text"
+                      placeholder="Search creators..."
+                      value={authorSearch}
+                      onChange={(e) => setAuthorSearch(e.target.value)}
+                      className="assignee-search"
+                    />
+                    <button
+                      type="button"
+                      className="clear-all-assignees"
+                      onClick={() => setFilters(prev => ({ ...prev, authors: [] }))}
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                  <div className="assignee-list">
+                    {filteredAuthors.map(author => (
+                      <label key={author} className="assignee-option">
+                        <input
+                          type="checkbox"
+                          checked={filters.authors.includes(author)}
+                          onChange={(e) => handleAuthorFilterChange(author, e.target.checked)}
+                        />
+                        <span className="assignee-name">{author}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="filter-group">
           <label>Sort:</label>
           <button
             type="button"
@@ -507,7 +606,7 @@ function MRMedic({ mergeRequests, loading, error, onRefresh }) {
                         {mr.assignees.map((assignee, index) => (
                           <span key={assignee.id}>
                             <a 
-                              href={`${mr.web_url.split('/merge_requests')[0]}/-/project_members`}
+                              href={`${mr.web_url.split('/-/merge_requests')[0]}/-/project_members`}
                               target="_blank" 
                               rel="noopener noreferrer"
                               className="assignee-link"
@@ -525,7 +624,7 @@ function MRMedic({ mergeRequests, loading, error, onRefresh }) {
                       <span className="mr-author">
                         <span className="meta-label">✍️</span>
                         <a 
-                          href={`${mr.web_url.split('/merge_requests')[0]}/-/project_members`}
+                          href={`${mr.web_url.split('/-/merge_requests')[0]}/-/project_members`}
                           target="_blank" 
                           rel="noopener noreferrer"
                           className="author-link"
@@ -574,7 +673,7 @@ function MRMedic({ mergeRequests, loading, error, onRefresh }) {
                       {mr.linked_issue_ids.map(issueId => (
                         <a 
                           key={issueId}
-                          href={`${mr.web_url.split('/merge_requests')[0]}/-/issues/${issueId}`}
+                          href={`${mr.web_url.split('/-/merge_requests')[0]}/-/issues/${issueId}`}
                           target="_blank" 
                           rel="noopener noreferrer"
                           className="issue-link-compact"
