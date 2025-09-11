@@ -232,8 +232,8 @@ body {
 }
 
 .issue-number {
-  background: #e9ecef;
-  color: #6c757d;
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
   padding: 0.25rem 0.5rem;
   border-radius: 6px;
   font-size: 0.8rem;
@@ -826,7 +826,7 @@ body {
 
 .linked-issue-card.closed {
   opacity: 0.7;
-  background: linear-gradient(135deg, #f8f9fa 0%, var(--bg-secondary) 100%);
+  background: var(--bg-secondary);
 }
 
 [data-theme="dark"] .linked-issue-card.closed {
@@ -1464,9 +1464,9 @@ body {
   width: 100%;
   padding: 10px 16px;
   padding-right: 40px;
-  border: 2px solid #e0e0e0 !important;
+  border: 2px solid var(--border-color) !important;
   border-radius: 8px;
-  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  background: var(--bg-primary);
   background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
   background-repeat: no-repeat;
   background-position: right 12px center;
@@ -1483,9 +1483,9 @@ body {
 
 .styled-select:hover {
   border-color: #0066cc !important;
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  background: var(--bg-secondary);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 8px var(--shadow);
 }
 
 .styled-select:focus {
@@ -1497,26 +1497,26 @@ body {
 .sort-toggle-button {
   width: 100%;
   padding: 10px 16px;
-  border: 2px solid #e0e0e0;
+  border: 2px solid var(--border-color);
   border-radius: 8px;
-  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  background: var(--bg-primary);
+  color: var(--text-primary);
   font-size: 14px;
   font-weight: 500;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 4px var(--shadow);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  color: #333;
 }
 
 .sort-toggle-button:hover {
   border-color: #0066cc;
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  background: var(--bg-secondary);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 8px var(--shadow);
 }
 
 .sort-toggle-button:focus {
@@ -1548,9 +1548,10 @@ body {
 .project-selector-button, .assignee-selector-button, .draft-selector-button, .approval-selector-button {
   width: 100%;
   padding: 10px 16px;
-  border: 2px solid #e0e0e0;
+  border: 2px solid var(--border-color);
   border-radius: 8px;
-  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  background: var(--bg-primary);
+  color: var(--text-primary);
   cursor: pointer;
   display: flex;
   justify-content: space-between;
@@ -1558,14 +1559,14 @@ body {
   font-size: 14px;
   font-weight: 500;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 4px var(--shadow);
 }
 
 .project-selector-button:hover, .assignee-selector-button:hover, .draft-selector-button:hover, .approval-selector-button:hover {
   border-color: #0066cc;
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  background: var(--bg-secondary);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 8px var(--shadow);
 }
 
 .project-selector-button:focus, .assignee-selector-button:focus, .draft-selector-button:focus, .approval-selector-button:focus {
@@ -1595,11 +1596,11 @@ body {
   top: 100%;
   left: 0;
   right: 0;
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--bg-primary);
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15), 0 8px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 20px 40px var(--shadow), 0 8px 16px var(--shadow);
   z-index: 1000;
   overflow: hidden;
   animation: dropdownSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1626,8 +1627,8 @@ body {
 
 .project-dropdown-header, .assignee-dropdown-header {
   padding: 16px 20px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
   display: flex;
   gap: 12px;
   align-items: center;
@@ -1637,12 +1638,18 @@ body {
 .project-search, .assignee-search {
   flex: 1;
   padding: 10px 16px;
-  border: 2px solid #e0e0e0;
+  border: 2px solid var(--border-color);
   border-radius: 8px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
   font-size: 14px;
-  background: white;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 4px var(--shadow);
+}
+
+.project-search::placeholder, .assignee-search::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
 }
 
 .project-search:focus, .assignee-search:focus {
@@ -1674,7 +1681,7 @@ body {
 .project-list, .assignee-list {
   max-height: 250px;
   overflow-y: auto;
-  background: white;
+  background: var(--bg-primary);
 }
 
 .project-option, .assignee-option, .draft-option, .approval-option {
@@ -1684,8 +1691,9 @@ body {
   padding: 12px 20px;
   cursor: pointer;
   font-size: 14px;
+  color: var(--text-primary);
   transition: all 0.2s ease;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid var(--border-color);
   position: relative;
 }
 
@@ -1695,9 +1703,9 @@ body {
 }
 
 .project-option:hover, .assignee-option:hover, .draft-option:hover, .approval-option:hover {
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  background: var(--bg-secondary);
   transform: translateX(4px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px var(--shadow);
 }
 
 .project-option input[type="checkbox"], .assignee-option input[type="checkbox"] {
@@ -1713,7 +1721,7 @@ body {
   white-space: nowrap;
   overflow: visible;
   font-size: 13px;
-  color: #333;
+  color: var(--text-primary);
   font-weight: 500;
 }
 
@@ -1745,7 +1753,7 @@ body {
 }
 
 .mr-created {
-  color: #666;
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
