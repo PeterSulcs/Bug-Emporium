@@ -4,6 +4,7 @@ import IssueSection from './components/IssueSection';
 import LoadingSpinner from './components/LoadingSpinner';
 import ErrorMessage from './components/ErrorMessage';
 import FeatureFunhouse from './components/FeatureFunhouse';
+import AmazingRace from './components/AmazingRace';
 import MRMedic from './components/MRMedic';
 
 /**
@@ -21,6 +22,7 @@ function App() {
   const [issues, setIssues] = useState(null);
   const [features, setFeatures] = useState(null);
   const [mergeRequests, setMergeRequests] = useState(null);
+  const [race, setRace] = useState(null);
   // Independent loading/error states
   const [issuesLoading, setIssuesLoading] = useState(true);
   const [issuesError, setIssuesError] = useState(null);
@@ -28,6 +30,8 @@ function App() {
   const [featuresError, setFeaturesError] = useState(null);
   const [mergeRequestsLoading, setMergeRequestsLoading] = useState(true);
   const [mergeRequestsError, setMergeRequestsError] = useState(null);
+  const [raceLoading, setRaceLoading] = useState(true);
+  const [raceError, setRaceError] = useState(null);
   const [_configLoading, setConfigLoading] = useState(true);
   const [_configError, setConfigError] = useState(null);
   const [config, setConfig] = useState(null);
@@ -85,14 +89,17 @@ function App() {
     setFeaturesError(null);
     setMergeRequestsLoading(true);
     setMergeRequestsError(null);
+    setRaceLoading(true);
+    setRaceError(null);
     setConfigLoading(true);
     setConfigError(null);
 
-    const [issuesResult, featuresResult, mergeRequestsResult, configResult] = await Promise.allSettled([
+    const [issuesResult, featuresResult, mergeRequestsResult, configResult, raceResult] = await Promise.allSettled([
       axios.get('/api/issues'),
       axios.get('/api/funhouse'),
       axios.get('/api/merge-requests'),
-      axios.get('/api/config')
+      axios.get('/api/config'),
+      axios.get('/api/race')
     ]);
 
     // issues
@@ -124,6 +131,16 @@ function App() {
       setMergeRequestsError(mergeRequestsResult.reason?.response?.data?.error || 'Failed to fetch merge requests');
     }
     setMergeRequestsLoading(false);
+
+    // race
+    if (raceResult.status === 'fulfilled') {
+      setRace(raceResult.value.data);
+      setRaceError(null);
+    } else {
+      console.error('Error fetching race:', raceResult.reason);
+      setRaceError(raceResult.reason?.response?.data?.error || 'Failed to fetch race');
+    }
+    setRaceLoading(false);
 
     // config
     if (configResult.status === 'fulfilled') {
@@ -197,6 +214,12 @@ function App() {
         onClick={() => navigateToPage('funhouse')}
       >
         🎪 Feature Funhouse
+      </button>
+      <button 
+        className={`nav-button ${currentPage === 'race' ? 'active' : ''}`}
+        onClick={() => navigateToPage('race')}
+      >
+        🏁 Amazing Race
       </button>
       <button 
         className={`nav-button ${currentPage === 'medic' ? 'active' : ''}`}
@@ -314,6 +337,23 @@ function App() {
           mergeRequests={mergeRequests}
           loading={mergeRequestsLoading}
           error={mergeRequestsError}
+          onRefresh={handleRefresh}
+        />
+      </div>
+    );
+  }
+
+  // Render Amazing Race page
+  if (currentPage === 'race') {
+    return (
+      <div className="app">
+        <Navigation />
+        <UserMenu />
+        <AmazingRace 
+          race={race}
+          config={config}
+          loading={raceLoading}
+          error={raceError}
           onRefresh={handleRefresh}
         />
       </div>

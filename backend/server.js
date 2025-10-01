@@ -66,6 +66,9 @@ const EMPORIUM_LABEL = process.env.EMPORIUM_LABEL || 'emporium';
 const PRIORITY_LABEL = process.env.PRIORITY_LABEL || 'priority';
 const FUNHOUSE_LABEL = process.env.FUNHOUSE_LABEL || 'funhouse';
 const IGNORE_LABELS = process.env.IGNORE_LABELS ? process.env.IGNORE_LABELS.split(',').map(label => label.trim()) : ['renovate', 'dependabot'];
+// Amazing Race configuration
+const RACE_LABEL = process.env.RACE_LABEL || 'amazing::race';
+const TEAM_LABELS = (process.env.TEAM_LABELS ? process.env.TEAM_LABELS.split(',') : ['alpha','bravo','whiskey','tango','foxtrot']).map(l => l.trim()).filter(Boolean);
 const GITLAB_CA_CERT_PATH = process.env.GITLAB_CA_CERT_PATH;
 
 // Create HTTPS agent with custom CA certificate if provided
@@ -181,6 +184,8 @@ app.get('/api/config', (req, res) => {
     emporiumLabel: EMPORIUM_LABEL,
     priorityLabel: PRIORITY_LABEL,
     funhouseLabel: FUNHOUSE_LABEL,
+    raceLabel: RACE_LABEL,
+    teamLabels: TEAM_LABELS,
     ignoreLabels: IGNORE_LABELS,
     gitlabEndpoint: GITLAB_ENDPOINT,
     hasCustomCert: !!httpsAgent,
@@ -889,6 +894,133 @@ app.get('/api/funhouse', async (req, res) => {
     
     res.status(500).json({ 
       error: 'Failed to fetch funhouse features from GitLab',
+      details: errorDetails,
+      code: error.code || 'UNKNOWN_ERROR'
+    });
+  }
+});
+
+// Amazing Race endpoint
+app.get('/api/race', async (req, res) => {
+  try {
+    if (!GITLAB_TOKEN || !GITLAB_GROUP_ID) {
+      return res.status(500).json({ 
+        error: 'GitLab configuration missing. Please check your environment variables.' 
+      });
+    }
+
+    // Cache first
+    const cacheKey = getCacheKey('race', { groupId: GITLAB_GROUP_ID, raceLabel: RACE_LABEL, teamLabels: TEAM_LABELS.join(',') });
+    const cachedData = getCachedData(cacheKey);
+    if (cachedData) {
+      return res.json(cachedData);
+    }
+
+    console.log(`Fetching race issues for group ${GITLAB_GROUP_ID} with race label '${RACE_LABEL}'`);
+
+    // Fetch all race issues (open and closed) with the race label
+    const raceIssues = [];
+    let page = 1;
+    const perPage = 100;
+    let hasMorePages = true;
+
+    while (hasMorePages) {
+      try {
+        const issues = await cachedGitlabApiCall(`/groups/${GITLAB_GROUP_ID}/issues`, {
+          labels: RACE_LABEL,
+          state: 'all',
+          per_page: perPage,
+          page: page,
+          include_subgroups: true,
+          order_by: 'created_at',
+          sort: 'desc'
+        });
+
+        raceIssues.push(...issues);
+        hasMorePages = issues.length === perPage;
+        page++;
+      } catch (error) {
+        console.error(`Error fetching race page ${page}:`, error.message);
+        break;
+      }
+    }
+
+    // Fetch project names
+    const projectIds = [...new Set(raceIssues.map(issue => issue.project_id))];
+    const projectNames = {};
+    const projectPromises = projectIds.map(async (projectId) => {
+      try {
+        const projectData = await cachedGitlabApiCall(`/projects/${projectId}`, { simple: true }, PROJECT_CACHE_TTL);
+        return { projectId, name: projectData.name };
+      } catch (_e) {
+        return { projectId, name: `Project ${projectId}` };
+      }
+    });
+    const projectResults = await Promise.all(projectPromises);
+    projectResults.forEach(({ projectId, name }) => { projectNames[projectId] = name; });
+    raceIssues.forEach(issue => { issue.project_name = projectNames[issue.project_id] || `Project ${issue.project_id}`; });
+
+    // Build leaderboard based on closed issues per team label
+    const teamStats = TEAM_LABELS.map(label => ({ team: label, closed: 0, total: 0 }));
+    const labelToStats = Object.fromEntries(teamStats.map(s => [s.team, s]));
+
+    raceIssues.forEach(issue => {
+      const labels = Array.isArray(issue.labels) ? issue.labels : [];
+      const teamMatches = TEAM_LABELS.filter(t => labels.includes(t));
+      if (teamMatches.length > 0) {
+        teamMatches.forEach(team => {
+          labelToStats[team].total += 1;
+          if (issue.state === 'closed') {
+            labelToStats[team].closed += 1;
+          }
+        });
+      }
+    });
+
+    // Sort leaderboard: closed desc, then total asc, then team name
+    const leaderboard = teamStats
+      .map(s => ({ ...s, remaining: Math.max(0, s.total - s.closed) }))
+      .sort((a, b) => {
+        if (b.closed !== a.closed) return b.closed - a.closed;
+        if (a.total !== b.total) return a.total - b.total;
+        return a.team.localeCompare(b.team);
+      });
+
+    // Group issues by team for UI convenience
+    const issuesByTeam = {};
+    TEAM_LABELS.forEach(t => { issuesByTeam[t] = { open: [], closed: [] }; });
+    raceIssues.forEach(issue => {
+      const labels = Array.isArray(issue.labels) ? issue.labels : [];
+      const teamMatches = TEAM_LABELS.filter(t => labels.includes(t));
+      if (teamMatches.length === 0) return;
+      teamMatches.forEach(team => {
+        if (issue.state === 'closed') {
+          issuesByTeam[team].closed.push(issue);
+        } else {
+          issuesByTeam[team].open.push(issue);
+        }
+      });
+    });
+
+    const responseData = {
+      leaderboard,
+      issuesByTeam,
+      total: raceIssues.length,
+      raceLabel: RACE_LABEL,
+      teamLabels: TEAM_LABELS,
+      timestamp: new Date().toISOString()
+    };
+
+    setCachedData(cacheKey, responseData);
+    res.json(responseData);
+  } catch (error) {
+    console.error('Error fetching race issues:', error);
+    let errorDetails = error.message;
+    if (error.response) {
+      errorDetails = `GitLab API error: ${error.response.status} ${error.response.statusText}`;
+    }
+    res.status(500).json({ 
+      error: 'Failed to fetch race issues from GitLab',
       details: errorDetails,
       code: error.code || 'UNKNOWN_ERROR'
     });
