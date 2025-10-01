@@ -1417,13 +1417,13 @@ body {
   }
 
   .project-dropdown, .assignee-dropdown {
-    max-height: 250px;
+    max-height: 400px;
     min-width: 300px;
     max-width: 90vw;
   }
   
   .project-list, .assignee-list {
-    max-height: 150px;
+    max-height: 300px;
   }
 
   .project-option, .assignee-option {
@@ -1611,7 +1611,7 @@ body {
   min-width: 400px;
   width: max-content;
   max-width: 600px;
-  max-height: 350px;
+  max-height: 500px;
 }
 
 @keyframes dropdownSlideIn {
@@ -1679,7 +1679,7 @@ body {
 }
 
 .project-list, .assignee-list {
-  max-height: 250px;
+  max-height: 400px;
   overflow-y: auto;
   background: var(--bg-primary);
 }
