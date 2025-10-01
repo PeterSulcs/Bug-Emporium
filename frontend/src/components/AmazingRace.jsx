@@ -1,7 +1,7 @@
 import LoadingSpinner from './LoadingSpinner';
 import ErrorMessage from './ErrorMessage';
 
-function AmazingRace({ race, config, loading, error, onRefresh }) {
+function AmazingRace({ race, config: _config, loading, error, onRefresh }) {
   if (loading) {
     return (
       <>
